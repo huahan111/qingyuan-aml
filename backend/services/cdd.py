@@ -17,7 +17,7 @@ from datetime import date
 # ===== 模拟企业工商库（合成数据，仅用于演示）=====
 MOCK_ENTERPRISES = {
     "ZZ供应链有限公司": {
-        "uscc": "91310104MA1FL2XK7B",
+        "uscc": "91310104MA1FL2XK72",
         "legal_rep": "陈某某",
         "reg_capital": "500 万元人民币",
         "established": "2025-11-18",
@@ -31,7 +31,7 @@ MOCK_ENTERPRISES = {
         "suggestion": "建议 EDD：核实实际经营场所、社保与工资发放、上下游合同与发票；开户/提额从严。",
     },
     "清源建材贸易有限公司": {
-        "uscc": "91310115MA1H8YQ23K",
+        "uscc": "91310115MA1H8YQ238",
         "legal_rep": "王某某",
         "reg_capital": "1000 万元人民币",
         "established": "2016-03-09",
@@ -46,7 +46,7 @@ MOCK_ENTERPRISES = {
         "suggestion": "常规尽调即可；按年复核工商变更与受益所有人。",
     },
     "XX贸易有限公司": {
-        "uscc": "91310112MA1GC0P45N",
+        "uscc": "91310112MA1GC0P453",
         "legal_rep": "李某某",
         "reg_capital": "100 万元人民币",
         "established": "2023-06-21",
@@ -71,6 +71,10 @@ MOCK_IDENTITY = {
 ID_WEIGHTS = (7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2)
 ID_CHECK = "10X98765432"
 
+# GB 32100-2015 统一社会信用代码：31 字符集（不含 I/O/S/V/Z）与 17 位权重
+_USCC_CHARS = "0123456789ABCDEFGHJKLMNPQRTUWXY"
+_USCC_WEIGHTS = (1, 3, 9, 27, 19, 26, 16, 17, 20, 29, 25, 13, 8, 24, 10, 30, 28)
+
 
 class CddError(Exception):
     pass
@@ -86,6 +90,22 @@ def verify_id_checksum(id_no: str) -> bool:
         return False
     total = sum(int(id_no[i]) * ID_WEIGHTS[i] for i in range(17))
     return ID_CHECK[total % 11] == id_no[17].upper()
+
+
+def verify_uscc(uscc: str) -> bool:
+    """GB 32100-2015 统一社会信用代码校验位（真实算法）。
+
+    第 18 位 = 字符集[(31 - Σ(字符值×权重) mod 31) mod 31]，
+    模拟企业的信用代码均按此算法构造，可现场验算。
+    """
+    u = (uscc or "").strip().upper()
+    if len(u) != 18:
+        return False
+    try:
+        total = sum(_USCC_CHARS.index(u[i]) * _USCC_WEIGHTS[i] for i in range(17))
+    except ValueError:
+        return False
+    return _USCC_CHARS[(31 - total % 31) % 31] == u[17]
 
 
 def _mask_id(id_no: str) -> str:
@@ -125,25 +145,43 @@ class MockEnterpriseProvider(CddProvider):
 
     def lookup_enterprise(self, name: str, uscc: str = "") -> dict:
         key = _strip_suffix(name)
-        if not key:
+        uscc = (uscc or "").strip().upper()
+        if not key and not uscc:
             raise CddError("企业名称不能为空")
         data = MOCK_ENTERPRISES.get(key)
+        if not data and uscc:
+            # 名称未命中时按统一社会信用代码反查
+            data = next((d for d in MOCK_ENTERPRISES.values() if d.get("uscc") == uscc), None)
         if not data:
-            return {"found": False, "query": key, "provider": self.id,
+            query = key or uscc
+            return {"found": False, "query": query, "provider": self.id,
                     "notice": "模拟库中无此企业；真实环境应由企查查/天眼查返回工商照面与风险信息",
-                    "checks": []}
-        return {"found": True, "query": key, "provider": self.id,
+                    "checks": [] if not uscc else [
+                        {"item": "统一社会信用代码校验位（GB 32100）",
+                         "result": "通过" if verify_uscc(uscc) else "不通过（号码可能录错）",
+                         "ok": verify_uscc(uscc)}]}
+        checks = [
+            {"item": "工商登记状态", "result": data["status"],
+             "ok": "存续" in data["status"]},
+            {"item": "成立年限", "result": data["established"],
+             "ok": _years_since(data["established"]) >= 1},
+            {"item": "受益所有人", "result": "；".join(
+                f"{s['name']} {s['ratio']}" for s in data["shareholders"]), "ok": True},
+            {"item": "风险标签", "result": "、".join(data["risk_tags"]),
+             "ok": not any(t in ("经营异常名录", "注册地址无法联系") for t in data["risk_tags"])},
+        ]
+        if uscc:
+            ok_uscc = verify_uscc(uscc)
+            checks.insert(0, {"item": "统一社会信用代码校验位（GB 32100）",
+                              "result": "通过" if ok_uscc else "不通过（号码可能录错）",
+                              "ok": ok_uscc})
+            match = uscc == data["uscc"]
+            checks.append({"item": "名称与信用代码一致性",
+                           "result": "一致" if match else f"不一致（该名称对应 {data['uscc']}）",
+                           "ok": match})
+        return {"found": True, "query": key or data["uscc"], "provider": self.id,
                 "source": "内置模拟工商库（合成数据）", **data,
-                "checks": [
-                    {"item": "工商登记状态", "result": data["status"],
-                     "ok": "存续" in data["status"]},
-                    {"item": "成立年限", "result": data["established"],
-                     "ok": _years_since(data["established"]) >= 1},
-                    {"item": "受益所有人", "result": "；".join(
-                        f"{s['name']} {s['ratio']}" for s in data["shareholders"]), "ok": True},
-                    {"item": "风险标签", "result": "、".join(data["risk_tags"]),
-                     "ok": not any(t in ("经营异常名录", "注册地址无法联系") for t in data["risk_tags"])},
-                ]}
+                "checks": checks}
 
 
 class QccEnterpriseProvider(CddProvider):

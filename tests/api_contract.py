@@ -446,6 +446,21 @@ class ContractTest(unittest.TestCase):
         self.assertEqual(d["conclusion"], "高风险")
         self.assertIn("风险标签", [c["item"] for c in d["checks"]])
 
+        # 统一社会信用代码：GB 32100 真实校验位算法 + 按信用代码反查 + 名称一致性核对
+        self.assertTrue(__import__("services.cdd", fromlist=["verify_uscc"]).verify_uscc(d["uscc"]))
+        r = CLIENT.post("/api/cdd/enterprise", json={"uscc": "91310104MA1FL2XK72"})
+        self.assertEqual(r.status_code, 200)
+        by_uscc = r.json()
+        self.assertTrue(by_uscc["found"])
+        self.assertEqual(by_uscc["conclusion"], "高风险")
+        self.assertIn("统一社会信用代码校验位（GB 32100）",
+                      [c["item"] for c in by_uscc["checks"]])
+        # 名称与信用代码不一致 → 一致性核对不通过
+        r = CLIENT.post("/api/cdd/enterprise",
+                        json={"name": "ZZ供应链有限公司（对公）", "uscc": "91310115MA1H8YQ238"})
+        mismatch = next(c for c in r.json()["checks"] if c["item"] == "名称与信用代码一致性")
+        self.assertFalse(mismatch["ok"])
+
         r = CLIENT.post("/api/cdd/enterprise", json={"name": "查无此企业有限公司"})
         self.assertEqual(r.status_code, 200)
         self.assertFalse(r.json()["found"])     # 查不到就说查不到

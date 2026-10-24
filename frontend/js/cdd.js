@@ -1,5 +1,18 @@
 /* CDD 尽职调查：对公工商尽调 / 个人身份核验（只查询，不落库、不存证件号） */
 
+/* 示例号一键填充并直查（合成数据，演示勿输真实证件号） */
+function fillCddEnt(name, uscc){
+  document.getElementById("cddEntName").value = name;
+  document.getElementById("cddEntUscc").value = uscc || "";
+  runCddEnterprise();
+}
+function fillCddPer(name, idNo){
+  document.getElementById("cddPerName").value = name;
+  document.getElementById("cddPerId").value = idNo;
+  document.getElementById("cddPerExp").value = "2030-01-01";
+  runCddPersonal();
+}
+
 async function initCdd(){
   try{
     const info = await jget("/api/cdd/info");
