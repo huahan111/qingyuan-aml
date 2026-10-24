@@ -1,0 +1,19 @@
+# 公开演示部署：只读模式（默认），SQLite 持久化到 named volume
+# 使用：docker compose up -d --build   →   http://<host>:8000
+services:
+  qingyuan:
+    build: .
+    image: qingyuan-aml:demo
+    container_name: qingyuan-aml
+    ports:
+      - "8000:8000"
+    environment:
+      QINGYUAN_READ_ONLY: "1"        # 公开演示硬前提：写接口全部 403
+      # QINGYUAN_CORS_ORIGINS: "https://your-domain"   # 如需跨域再开，默认同源
+      # AML_AI_PROVIDER: live                          # 接真模型需同时提供 OPENAI_API_KEY（建议用 secrets，不写在此处）
+    volumes:
+      - qingyuan-data:/app/backend/data
+    restart: unless-stopped
+
+volumes:
+  qingyuan-data:
