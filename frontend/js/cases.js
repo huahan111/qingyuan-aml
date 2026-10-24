@@ -29,7 +29,7 @@ function renderCase(c){
   // 已定性案例库条目（LIB-/DIS-）只读查看，不重新研判
   const isLibrary = !!(c.source && c.source !== "demo");
   const txRows = c.transactions.map(t=>`
-    <tr><td>${t.date} ${t.time||""}</td><td>${esc(t.type)}</td>
+    <tr><td>${esc(t.date)} ${esc(t.time||"")}</td><td>${esc(t.type)}</td>
     <td>${esc(t.purpose||"—")}</td>
     <td class="${IN_TYPES.includes(t.type) ? "amt-in" : "amt-out"}">${fmtTxAmount(t)}</td>
     <td>${esc(t.counterparty||"—")}</td><td>${esc(t.channel||"—")}</td><td>${esc(t.summary||"—")}</td></tr>`).join("");

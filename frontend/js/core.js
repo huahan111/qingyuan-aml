@@ -20,7 +20,8 @@ function toast(msg){
   clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove("show"), 2200);
 }
 function esc(s){
-  return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  // 单引号也须转义：大量 onclick 属性用单引号包插值，漏掉即成注入点
+  return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
 async function jget(url){ const r = await fetch(url); if(!r.ok) throw new Error(await r.text()); return r.json(); }
 async function jpost(url, body){
@@ -54,11 +55,6 @@ function isoToday(){
   const d = new Date(), p = n => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
 }
-function newReceiptNo(){
-  const d = new Date(), p = n => String(n).padStart(2, "0");
-  return "RX-" + d.getFullYear() + p(d.getMonth()+1) + p(d.getDate())
-    + "-" + String(Math.floor(Math.random()*90000)+10000);
-}
 
 async function resetDemo(){
   if(state.readOnly){ toast("只读演示环境不能重置数据"); return; }
@@ -79,7 +75,7 @@ const PAGE_META = {
   ctr: ["大额交易报告", "客观标准：达到阈值即报，不判断可疑"],
   cdd: ["客户尽职调查", "识别 → 核实 → 留痕 · 可发起对公/个人尽调查询"],
   rating: ["客户风险评级", "风险等级与评级因素（静态展示）"],
-  rules: ["监测规则配置", "规则库只读展示 · R001–R010 可执行"],
+  rules: ["监测规则配置", "规则库只读展示 · R001–R009 + R017 可执行"],
   reports: ["上报台账", "已报送记录 · 回执 · 三级签字 · 报告版本"]
 };
 function showPage(name){

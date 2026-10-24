@@ -9,9 +9,41 @@ Provider 接口约定（两个 Provider 必须同签名，调用方不区分类�
 """
 import os
 import json
+import urllib.error
 import urllib.request
 
 MOCK_DIR = os.path.join(os.path.dirname(__file__), "data", "mock_diagnosis")
+
+
+class AiUnavailableError(RuntimeError):
+    """Live 上游不可用或返回不合格（网络/超时/非 JSON/缺字段/枚举非法）。"""
+
+
+# Live 输出护栏：模型返回必须过这份结构校验才允许进入研判与报告链路。
+# 与 MockProvider 预生成 JSON 的字段约定一致；缺字段/错枚举一律拒收，绝不带病 downstream。
+_AI_REQUIRED_KEYS = ("conclusion", "official_type_no", "official_type_name",
+                     "analysis_points", "elimination", "materials_to_check", "suggestion")
+_AI_VALID_CONCLUSIONS = ("放行", "人工复核", "拦截")
+_AI_LIST_KEYS = ("analysis_points", "materials_to_check")
+_AI_STR_MAX_LEN = 4000
+
+
+def _validate_ai_result(result):
+    if not isinstance(result, dict):
+        raise ValueError("模型返回不是 JSON 对象")
+    missing = [k for k in _AI_REQUIRED_KEYS if k not in result]
+    if missing:
+        raise ValueError(f"模型返回缺少字段：{'、'.join(missing)}")
+    if result["conclusion"] not in _AI_VALID_CONCLUSIONS:
+        raise ValueError(f"conclusion 取值非法：{result['conclusion']!r}（须为 放行/人工复核/拦截）")
+    for key in _AI_LIST_KEYS:
+        if not isinstance(result[key], list):
+            raise ValueError(f"{key} 应为数组")
+    for key in _AI_REQUIRED_KEYS:
+        value = result[key]
+        if isinstance(value, str) and len(value) > _AI_STR_MAX_LEN:
+            raise ValueError(f"{key} 超长（>{_AI_STR_MAX_LEN} 字符），疑似异常输出")
+    return result
 
 # 官方可疑交易类型清单：与法规库 PBOC_TYPE_TABLE 收录的《可疑交易类型和识别点对照表
 # （银行业参考版）》逐条对齐——该表共 12 类、13 个编号条目（类型1-1、1-2、2～12）。
@@ -99,26 +131,41 @@ class LiveProvider:
     def diagnose(self, case_id, case_data, rule_hits):
         # 签名与 MockProvider 保持一致（case_id 仅作上下文，不参与请求体）
         if not self.available():
-            raise RuntimeError("未配置 OPENAI_API_KEY，Live Provider 不可用")
+            raise AiUnavailableError("未配置 OPENAI_API_KEY，Live Provider 不可用")
         prompt = self.build_prompt(case_data, rule_hits)
-        req = urllib.request.Request(
-            f"{self.base_url}/chat/completions",
-            data=json.dumps({
-                "model": self.model,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.1,
-                "response_format": {"type": "json_object"},
-            }).encode("utf-8"),
-            headers={"Content-Type": "application/json",
-                     "Authorization": f"Bearer {self.api_key}"},
-            method="POST")
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-        content = body["choices"][0]["message"]["content"]
-        result = json.loads(content)
-        result["model"] = self.model
-        result["provider"] = "live"
-        return result
+        last_err = "未知错误"
+        # 网络故障/超时/返回非 JSON/结构不合格：重试一次；仍失败则明确抛
+        # AiUnavailableError（此前这些异常会裸抛成 500，且无重试）。
+        for _attempt in (1, 2):
+            try:
+                req = urllib.request.Request(
+                    f"{self.base_url}/chat/completions",
+                    data=json.dumps({
+                        "model": self.model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.1,
+                        "response_format": {"type": "json_object"},
+                    }).encode("utf-8"),
+                    headers={"Content-Type": "application/json",
+                             "Authorization": f"Bearer {self.api_key}"},
+                    method="POST")
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    body = json.loads(resp.read().decode("utf-8"))
+                content = body["choices"][0]["message"]["content"]
+                result = _validate_ai_result(json.loads(content))
+                result["model"] = self.model
+                result["provider"] = "live"
+                return result
+            except AiUnavailableError:
+                raise
+            except (urllib.error.URLError, TimeoutError, OSError,
+                    KeyError, IndexError, ValueError,
+                    json.JSONDecodeError, UnicodeDecodeError) as e:
+                last_err = f"{type(e).__name__}: {e}"
+                continue
+        raise AiUnavailableError(
+            f"Live 上游调用失败（已重试 1 次）：{last_err}；"
+            f"请检查 OPENAI_BASE_URL/AML_MODEL 配置与上游服务状态")
 
 
 def get_provider():

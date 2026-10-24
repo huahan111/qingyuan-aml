@@ -52,16 +52,23 @@ function submitReport(){
     </div>`;
   document.getElementById("signMask").classList.add("show");
 }
-function doSubmitReport(){
-  const d = new Date();
+async function doSubmitReport(){
+  // 先写台账成功、再置「已报送」状态：写库失败时报告保持"已签字待报送"，
+  // 提交按钮仍可用可重试（此前先置状态后异步写库，失败会把报告永久卡在
+  // "已报送"且台账无记录，且没有任何重试入口）
+  const saved = await saveSubmission();
+  if(!saved){
+    closeSign(); renderActionState();
+    toast("报送未完成：台账写入失败，报告仍为「已签字待报送」，可重新提交");
+    return;
+  }
   state.submitted = true;
-  state.receiptNo = newReceiptNo();
-  state.submittedAt = isoNow();
+  state.receiptNo = saved.receipt_no;
+  state.submittedAt = saved.submitted_at || isoNow();
   renderSignBlock();
   renderActionState();
   closeSign();
   toast(`已提交报送 · 回执 ${state.receiptNo}`);
-  saveSubmission();
   if(state.flowStage >= 6 && document.getElementById("page-flow").classList.contains("active")){
     flowAuth();
   }
@@ -227,7 +234,7 @@ function recordSignature(key, method, meta){
     name:r.name, id:r.id, post:r.post, method,
     channel:(AUTH_CHANNELS.find(c=>c.key===(meta||{}).channel)||{}).name || "",
     device:(meta||{}).device || "", score:(meta||{}).score || "",
-    time:new Date().toLocaleString("zh-CN")
+    time: isoNow()
   };
   state.signed = SIGN_ROLES.every(x=>state.signatures[x.key]);
   state.authPending = null;

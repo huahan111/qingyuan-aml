@@ -179,19 +179,23 @@ function flowAuth(){
         : `<div class="note-bar warn" style="margin-top:14px;">报告尚未完成三级授权。请打开报告，先核对/修订，再逐级授权签字。</div>
            <div style="margin-top:12px;"><button class="btn" onclick="openReport(state.flowReport)">打开报告 · 完成核对与授权 →</button></div>`}`;
 }
-function flowSubmit(){
+async function flowSubmit(){
   if(!SIGN_ROLES.every(r=>state.signatures[r.key])) return flowAuth();
-  state.flowStage = 7; flowPaint();
   const rep = state.flowReport;
   if(!rep) return flowStr();
   if(!state.submitted){
-    const d = new Date();
-    state.submitted = true;
-    state.receiptNo = newReceiptNo();
-    state.submittedAt = isoNow();
+    // 先写台账成功、再进入"已报送"环节：失败停留在签字环节可重试
     state.report = rep;
-    saveSubmission();
+    const saved = await saveSubmission();
+    if(!saved){
+      toast("报送未完成：台账写入失败，报告仍为「已签字待报送」，可重试");
+      return flowAuth();
+    }
+    state.submitted = true;
+    state.receiptNo = saved.receipt_no;
+    state.submittedAt = saved.submitted_at || isoNow();
   }
+  state.flowStage = 7; flowPaint();
   const receiptNo = state.receiptNo;
   const v = {};
   rep.elements.forEach(e=>v[e.no] = e.value);

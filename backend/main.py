@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
 from domain.rules import RULE_FUNCS, run_engine
-from ai_diagnosis import get_provider, LiveProvider
+from ai_diagnosis import AiUnavailableError, get_provider, LiveProvider
 from case_store import dataset_meta, list_cases as demo_list_cases, get_case as demo_get_case
 from infra.db import ensure_case_library_schema, ensure_submissions_table, get_db
 from infra.security import is_read_only
@@ -33,7 +33,13 @@ FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
 app = FastAPI(title="清源AML MVP", version="1.0.0",
               description="反洗钱智能监测平台 MVP：规则引擎+AI诊断+溯源面板。仅供演示与学习。")
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# CORS：默认同源（不挂中间件，跨域请求由浏览器拦截）。此前 allow_origins=["*"]
+# 会让用户浏览器中的任意网页都能对本机实例发跨域 POST（重置演示/伪造台账）。
+# 确需跨域时用 QINGYUAN_CORS_ORIGINS 显式配置白名单（逗号分隔）。
+_CORS_ORIGINS = [o.strip() for o in os.getenv("QINGYUAN_CORS_ORIGINS", "").split(",") if o.strip()]
+if _CORS_ORIGINS:
+    app.add_middleware(CORSMiddleware, allow_origins=_CORS_ORIGINS,
+                       allow_methods=["*"], allow_headers=["*"])
 
 # 只读模式：非 GET/HEAD/OPTIONS 请求默认全部拒绝，仅放行"只计算、不落库"的
 # 研判 / 报告生成接口（公开演示可看不可写）。新增写接口默认即被拦截（fail-closed），
@@ -116,18 +122,23 @@ def diagnose(case_id: str):
     if not case:
         raise HTTPException(404, f"案例 {case_id} 不存在")
     conn = db()
-    # 1. 规则引擎
-    rule_hits = run_engine(case["transactions"], case["customer_info"], conn)
-    # 2. AI 诊断（Mock / Live 同签名：available(case_id) + diagnose(case_id, case, rule_hits)）
-    provider = get_provider()
-    if not (hasattr(provider, "available") and provider.available(case_id)):
+    try:
+        # 1. 规则引擎
+        rule_hits = run_engine(case["transactions"], case["customer_info"], conn)
+        # 2. AI 诊断（Mock / Live 同签名：available(case_id) + diagnose(case_id, case, rule_hits)）
+        provider = get_provider()
+        if not (hasattr(provider, "available") and provider.available(case_id)):
+            raise HTTPException(503, f"AI Provider 不可用（case={case_id}）")
+        try:
+            ai_result = provider.diagnose(case_id, case, rule_hits)
+        except AiUnavailableError as e:
+            # Live 上游故障（网络/超时/返回不合格）：明确报 502，不让异常裸抛成 500
+            raise HTTPException(502, str(e))
+        # 3. 三向分流 + 相似案例召回
+        triage_result = triage(rule_hits, ai_result, case)
+        similar_cases = similar_for_case(case, conn)
+    finally:
         conn.close()
-        raise HTTPException(503, f"AI Provider 不可用（case={case_id}）")
-    ai_result = provider.diagnose(case_id, case, rule_hits)
-    # 3. 三向分流 + 相似案例召回
-    triage_result = triage(rule_hits, ai_result, case)
-    similar_cases = similar_for_case(case, conn)
-    conn.close()
     return {
         "case_id": case_id, "title": case["title"],
         "rule_hits": rule_hits,

@@ -56,7 +56,10 @@ def _fmt(n):
     return f"{n:,.0f}"
 
 
-def build_report(case, diagnosis, rule_hits, conn, report_date=None):
+def build_report(case, diagnosis, rule_hits, conn, report_date=None, diagnosis_origin="server"):
+    # diagnosis_origin：第 21/22 项文本的实际来源——"server"（服务端 AI Provider 产出）
+    # 或 "client"（调用方提交，可能含人工修订）。写入 meta 以便事后审计区分，
+    # 避免"任何调用方文本都被标成 ai 产出"的证据语义混淆。
     ci = case["customer_info"]
     txs = case["transactions"]
     cid = case["case_id"]
@@ -247,5 +250,6 @@ def build_report(case, diagnosis, rule_hits, conn, report_date=None):
         "cn": cn,
         "en": en,
         "meta": {"customer": name, "rules": hit_ids, "conclusion": conclusion,
-                 "official_type_no": type_no, "official_type_name": type_name},
+                 "official_type_no": type_no, "official_type_name": type_name,
+                 "diagnosis_origin": diagnosis_origin},
     }

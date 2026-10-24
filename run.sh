@@ -12,6 +12,11 @@ python3 -c "import fastapi, uvicorn" 2>/dev/null || {
   echo "安装依赖中…"; pip3 install -r requirements.txt || exit 1
 }
 
+# Python >= 3.10（api 层使用 `dict | None` 语法，3.9 及以下启动即 SyntaxError）
+if ! python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)'; then
+  echo "需要 Python 3.10 或更高版本，当前：$(python3 --version)"; exit 1
+fi
+
 # 数据库不存在则初始化（法规/规则进 SQLite，演示案例进独立 JSON）
 if [ ! -f backend/data/qingyuan.db ]; then
   echo "初始化法规库/规则库 + 演示数据集…"

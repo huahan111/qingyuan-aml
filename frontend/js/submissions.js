@@ -127,10 +127,12 @@ function submissionPayload(){
   const rep = state.report, s = state.signatures;
   const brief = x => x ? `${x.name} ${x.id}` : "";
   return {
-    report_no: rep.report_no, receipt_no: state.receiptNo,
+    report_no: rep.report_no,
+    // 回执号由服务端生成（RX-日期-序号），客户端不再随机生成：随机碰撞曾把
+    // 第二份报告静默并进第一条台账记录
     case_id: rep.case_id, case_title: rep.title,
     customer: (rep.meta||{}).customer || "",
-    submitted_at: state.submittedAt, version: state.version,
+    submitted_at: state.submittedAt || isoNow(), version: state.version,
     operator: brief(s.operator), reviewer: brief(s.reviewer), approver: brief(s.approver),
     audit: s, report: rep,
     edit_log: state.editLog || [], return_log: state.returnLog || [],
@@ -142,14 +144,17 @@ function submissionPayload(){
 }
 
 async function saveSubmission(){
-  if(!state.submitted || !state.receiptNo || !state.report) return;
+  // 返回写入的台账记录（含服务端回执号）；失败返回 null，由调用方决定是否重试
+  const rep = state.report, s = state.signatures;
+  if(!rep || !(s && s.operator && s.reviewer && s.approver)) return null;
   try{
-    await jpost("/api/submissions", submissionPayload());
-    toast("已写入上报台账");
+    const d = await jpost("/api/submissions", submissionPayload());
     if(document.getElementById("page-reports").classList.contains("active")) loadSubmissions();
+    return d;
   }catch(e){
     console.error(e);
     toast("台账写入失败：" + e.message);
+    return null;
   }
 }
 

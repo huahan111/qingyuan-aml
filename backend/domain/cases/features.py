@@ -39,7 +39,8 @@ def extract(case):
     text = " ".join(text_parts)
 
     counts = Counter(tokens(text))
-    total = sum(t["amount"] for t in txs)
+    # 金额口径与规则引擎一致：优先折人民币 amount_cny，外币原值不与人民币直接相加
+    total = sum(t.get("amount_cny") or t.get("amount") or 0 for t in txs)
     night_count = sum(1 for t in txs if _night(t))
 
     return {

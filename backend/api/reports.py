@@ -49,6 +49,7 @@ def build_str(case_id: str, payload: dict | None = Body(default=None)):
     try:
         rule_hits = run_engine(case["transactions"], case["customer_info"], conn)
         diagnosis = (payload or {}).get("diagnosis")
+        diagnosis_origin = "client"  # 调用方自带文本（可能含人工修订），meta 中如实标注
         if diagnosis:
             diagnosis = _validate_diagnosis(diagnosis)
         else:
@@ -56,6 +57,8 @@ def build_str(case_id: str, payload: dict | None = Body(default=None)):
             if not (hasattr(provider, "available") and provider.available(case_id)):
                 raise HTTPException(503, f"AI Provider 不可用（case={case_id}）")
             diagnosis = provider.diagnose(case_id, case, rule_hits)
-        return build_report(case, diagnosis, rule_hits, conn)
+            diagnosis_origin = "server"
+        return build_report(case, diagnosis, rule_hits, conn,
+                            diagnosis_origin=diagnosis_origin)
     finally:
         conn.close()

@@ -266,7 +266,7 @@ function saveEdits(){
   const rep = state.report;
   if(!rep) return;
   const who = SIGN_ROLES[0].name + "（" + SIGN_ROLES[0].id + "）";
-  const time = new Date().toLocaleString("zh-CN");
+  const time = isoNow();
   let changed = 0;
   rep.elements.forEach(e=>{
     const el = document.getElementById("el-"+e.no);

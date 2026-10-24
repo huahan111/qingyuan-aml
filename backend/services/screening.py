@@ -24,5 +24,5 @@ def screen(q: str):
         "hit": bool(matches),
         "matches": matches,
         "list_size": len(MOCK_SANCTION_LIST),
-        "action": "命中即冻结账户，24 小时内人工复核，不经 AI 诊断" if matches else "未命中，筛查过程已留痕",
+        "action": "命中即冻结账户，24 小时内人工复核，不经 AI 诊断" if matches else "未命中（演示环境暂未接入审计日志，筛查留痕随防篡改审计链上线）",
     }

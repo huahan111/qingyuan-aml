@@ -119,6 +119,8 @@ class ContractTest(unittest.TestCase):
         self.assertEqual(e24["source"], "manual")
         self.assertEqual(e24["value"], "")
         self.assertEqual(rep["counts"]["manual"], 1)
+        # 第 21/22 项来源可审计：服务端 Provider 产出标 "server"
+        self.assertEqual(rep["meta"]["diagnosis_origin"], "server")
         # 时限说明如实反映节假日配置状态
         self.assertIn("节假日", rep["deadline_note"])
 
@@ -126,6 +128,8 @@ class ContractTest(unittest.TestCase):
         # diagnosis 入参结构校验：结论枚举之外一律 422（防止任意文本直出报告）
         r = CLIENT.post("/api/report/BLOCK-01", json={"diagnosis": {"conclusion": "放行"}})
         self.assertEqual(r.status_code, 200)  # 合法结构放行
+        # 客户端提交的 diagnosis：meta 如实标注来源，事后审计可区分模型产出与人工文本
+        self.assertEqual(r.json()["meta"]["diagnosis_origin"], "client")
         r = CLIENT.post("/api/report/BLOCK-01", json={"diagnosis": {"conclusion": "想怎么写就怎么写"}})
         self.assertEqual(r.status_code, 422)
         r = CLIENT.post("/api/report/BLOCK-01", json={"diagnosis": "不是对象"})
@@ -224,19 +228,24 @@ class ContractTest(unittest.TestCase):
         r = CLIENT.get(f"/api/submissions/{sid}")
         self.assertEqual(r.status_code, 200)
         d = r.json()
-        self.assertEqual(d["receipt_no"], "RX-CONTRACT-0001")
+        # 回执号由服务端生成（RX-YYYYMMDD-NNNNN，当日递增）：客户端传入值一律忽略
+        self.assertRegex(d["receipt_no"], r"^RX-\d{8}-\d{5}$")
+        self.assertNotEqual(d["receipt_no"], "RX-CONTRACT-0001")
         self.assertEqual(d["edit_log"][0]["no"], 21)
         self.assertIn("report", d)
 
-        # 回执号幂等
+        # 同一报告重复提交（重试/双击）：幂等返回同一条记录
         r2 = CLIENT.post("/api/submissions", json=payload)
         self.assertEqual(r2.status_code, 200)
         self.assertEqual(r2.json()["id"], sid)
 
-        # 报告编号冲突
-        dup = dict(payload, receipt_no="RX-CONTRACT-0002")
-        r3 = CLIENT.post("/api/submissions", json=dup)
-        self.assertEqual(r3.status_code, 409)
+        # 不同报告：各自生成回执号、两条台账并存（历史上客户端随机回执碰撞
+        # 会走幂等分支，把第二份报告静默并进第一条记录）
+        rep2 = CLIENT.post("/api/report/BLOCK-01").json()
+        r3 = CLIENT.post("/api/submissions", json=dict(payload, report_no=rep2["report_no"]))
+        self.assertEqual(r3.status_code, 200)
+        self.assertNotEqual(r3.json()["receipt_no"], d["receipt_no"])
+        self.assertGreaterEqual(CLIENT.get("/api/submissions").json()["count"], 2)
 
         # 缺字段
         r4 = CLIENT.post("/api/submissions", json={"case_id": "BLOCK-01"})
@@ -250,6 +259,60 @@ class ContractTest(unittest.TestCase):
         partial = dict(no_audit, audit={"operator": {"name": "测试经办", "id": "T-01"}})
         r6 = CLIENT.post("/api/submissions", json=partial)
         self.assertEqual(r6.status_code, 422)
+
+    def test_07b_submissions_hardening(self):
+        """报送链路加固回归：类型混淆 422、非法时间拒绝、supersedes 越权拦截、更正闭环。"""
+        rep = CLIENT.post("/api/report/BLOCK-01").json()
+        base = {
+            "report_no": rep["report_no"], "case_id": rep["case_id"],
+            "case_title": rep["title"], "customer": rep["meta"].get("customer", ""),
+            "submitted_at": "2026-10-22 10:00:00", "version": 1,
+            "operator": "T-01", "reviewer": "T-02", "approver": "T-03",
+            "audit": {"operator": {"name": "经办", "id": "T-01"},
+                      "reviewer": {"name": "复核", "id": "T-02"},
+                      "approver": {"name": "审批", "id": "T-03"}},
+            "report": rep, "edit_log": [], "return_log": [],
+            "supersedes_receipt": "", "filing_deadline": rep["filing_deadline"],
+        }
+        # 类型混淆（历史上 int("abc")/[1].strip() 裸抛 500）→ 一律 422
+        self.assertEqual(CLIENT.post("/api/submissions",
+            json=dict(base, version="abc")).status_code, 422)
+        self.assertEqual(CLIENT.post("/api/submissions",
+            json=dict(base, version=[1])).status_code, 422)
+        self.assertEqual(CLIENT.post("/api/submissions",
+            json=dict(base, submitted_at=[1])).status_code, 422)
+        self.assertEqual(CLIENT.post("/api/submissions",
+            json=dict(base, submitted_at="昨天下午")).status_code, 422)
+
+        # supersedes 指向不存在的回执 → 拒绝（此前 UPDATE 无校验，可越权改状态）
+        self.assertEqual(CLIENT.post("/api/submissions",
+            json=dict(base, supersedes_receipt="RX-20990101-00001")).status_code, 422)
+
+        # 合法报送 → 服务端回执 → 更正闭环 → 重复更正被拦
+        r = CLIENT.post("/api/submissions", json=base)
+        self.assertEqual(r.status_code, 200)
+        origin_receipt, origin_id = r.json()["receipt_no"], r.json()["id"]
+
+        # 跨案例更正 → 拒绝
+        other = CLIENT.post("/api/report/GREY-01").json()
+        cross = dict(base, report_no=other["report_no"], case_id=other["case_id"],
+                     supersedes_receipt=origin_receipt)
+        self.assertEqual(CLIENT.post("/api/submissions", json=cross).status_code, 422)
+
+        # 同案例更正 → 成功，原回执状态翻转
+        corr_rep = CLIENT.post("/api/report/BLOCK-01").json()
+        correction = dict(base, report_no=corr_rep["report_no"],
+                          supersedes_receipt=origin_receipt, status="更正报告")
+        r2 = CLIENT.post("/api/submissions", json=correction)
+        self.assertEqual(r2.status_code, 200)
+        self.assertEqual(
+            CLIENT.get(f"/api/submissions/{origin_id}").json()["status"], "已更正")
+
+        # 同一原回执二次更正 → 拒绝
+        again_rep = CLIENT.post("/api/report/BLOCK-01").json()
+        again = dict(base, report_no=again_rep["report_no"],
+                     supersedes_receipt=origin_receipt, status="更正报告")
+        self.assertEqual(CLIENT.post("/api/submissions", json=again).status_code, 422)
 
     def test_08_intake(self):
         case = CLIENT.get("/api/cases/BLOCK-01").json()
@@ -339,7 +402,10 @@ class ContractTest(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         cov = r.json()
         self.assertEqual(cov["count"], 18)
-        self.assertEqual(cov["total_cases"], 17)
+        # 同案例多份报送会各自沉淀 LIB- 条目，案例总数随之增加；
+        # 覆盖矩阵必须守恒：每个案例都恰好归入一行（含"无法归类"出口）
+        self.assertGreaterEqual(cov["total_cases"], 17)
+        self.assertEqual(sum(t["case_count"] for t in cov["types"]), cov["total_cases"])
         self.assertGreaterEqual(cov["library_cases"], 1)
         self.assertIn("case_count", cov["types"][0])
 
