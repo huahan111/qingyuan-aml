@@ -169,11 +169,18 @@ python3 tests/run_all.py             # 依次运行以上五项
 | **mock**（默认） | 演示内置 17 条案例，预生成并人工校验的诊断结果，秒响应、零 token、永不翻车 | 无需配置 |
 | **live** | 真实大模型调用（OpenAI 兼容格式，DeepSeek 等通用） | `.env` 中设 `AML_AI_PROVIDER=live` + `OPENAI_API_KEY` |
 
+**接 DeepSeek（推荐的最省路径）**：按 token 计费、充值即用、无月费——在 [platform.deepseek.com](https://platform.deepseek.com) 充 10–20 元即可跑完全部演示。步骤：
+
 ```bash
 cp .env.example .env
-# 编辑 .env：AML_AI_PROVIDER=live，填入 OPENAI_API_KEY
+# 编辑 .env 三行：
+#   AML_AI_PROVIDER=live
+#   OPENAI_API_KEY=sk-你的key
+#   OPENAI_BASE_URL=https://api.deepseek.com/v1   （默认值，可不改）
 ./run.sh
 ```
+
+**Live 输出护栏**（不让模型的一次抽风污染报告链路）：返回必须通过结构校验——`conclusion` 枚举（放行/人工复核/拦截）、官方类型字段、数组型字段（分析要点/待核验材料）齐全且限长。不合格自动重试 1 次，仍失败返回明确的 502 错误（中文提示含失败原因），研判与报告不会写入异常输出。网络/超时/非 JSON 同样走这条护栏。
 
 ## 客户尽职调查（CDD）接入
 
