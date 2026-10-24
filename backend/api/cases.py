@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Body, HTTPException, Query
 
 from case_store import get_case
+from infra import audit as audit_chain
 from infra.db import get_db
 from services.case_linkage import record_disposition
 from services.intake import IntakeValidationError, screen_new_case
@@ -43,9 +44,15 @@ def disposition(payload: dict = Body(...)):
         raise HTTPException(404, f"案例 {case_id} 不存在")
     conn = get_db()
     try:
-        return record_disposition(
+        result = record_disposition(
             conn, case, payload.get("conclusion", "放行"),
             payload.get("reason", ""), payload.get("operator", ""))
+        audit_chain.record(
+            conn, actor=payload.get("operator") or "未署名", action="人工定性",
+            object_type="library_case", object_id=result.get("library_case_id", case_id),
+            detail={"case_id": case_id, "conclusion": payload.get("conclusion", ""),
+                    "reason": (payload.get("reason") or "")[:200]})
+        return result
     except ValueError as e:
         raise HTTPException(422, str(e))
     finally:

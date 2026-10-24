@@ -1,4 +1,4 @@
-"""运行全部测试：相似案例 + 案例联动 + API 契约 + E2E + 授权状态机。
+"""运行全部测试：相似案例 + 案例联动 + API 契约 + 审计链 + E2E + 授权状态机。
 
 浏览器类测试（E2E / 授权状态机）依赖 playwright；未安装时自动跳过并提示，
 不会让整套测试崩在 ModuleNotFoundError 上（依赖安装见 requirements-dev.txt）。
@@ -12,6 +12,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPTS = (
     ("tests/case_similarity.py", False),
     ("tests/case_linkage.py", False),
+    ("tests/audit_chain.py", False),
     ("tests/api_contract.py", False),
     ("tests/e2e_smoke.py", True),          # 需要 playwright + chromium
     ("tests/auth_state_machine.py", True),  # 需要 playwright + chromium
@@ -35,6 +36,6 @@ for script, needs_browser in SCRIPTS:
     if r.returncode != 0:
         sys.exit(r.returncode)
 
-print("\n全部测试通过：相似案例 + 案例联动 + API 契约 + E2E + 授权状态机")
+print("\n全部测试通过：相似案例 + 案例联动 + 审计链 + API 契约 + E2E + 授权状态机")
 if skipped:
     print(f"（本次跳过浏览器测试 {len(skipped)} 项：{'、'.join(skipped)}）")

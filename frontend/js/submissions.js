@@ -158,3 +158,74 @@ async function saveSubmission(){
   }
 }
 
+/* ================= 审计链（防篡改留痕） ================= */
+async function verifyAuditChain(){
+  const box = document.getElementById("auditVerifyBox");
+  box.style.display = "block";
+  box.className = "miss-box";
+  box.innerHTML = '<span class="loading"></span> 正在全链重放校验（逐条重算 SHA256 并核对链接）…';
+  try{
+    const d = await jget("/api/audit/verify");
+    if(d.ok){
+      box.className = "hit-box"; box.style.borderColor = "#bbf7d0";
+      box.innerHTML = `<b>✓ 审计链完整</b>：共 ${d.records} 条记录，全部通过哈希链重放校验（无篡改、无删改）。
+        链头哈希 <span style="font-family:monospace;font-size:11px;word-break:break-all;">${esc(d.head_hash)}</span><br>
+        <span style="font-size:11.5px;color:var(--muted);">每条记录的哈希覆盖：序号|时间戳|操作人|动作|对象|内容|上一条哈希——改任何一处，其后整条链全部失效；数据库触发器另拒绝 UPDATE/DELETE。</span>`;
+    }else{
+      box.className = "hit-box"; box.style.borderColor = "#fca5a5";
+      box.innerHTML = `<b style="color:var(--red);">✗ 审计链校验失败</b>：第 ${esc(String(d.broken_seq))} 条 ${esc(d.reason||"")}。链在此处断裂，其后所有记录不可信，应立即核查。`;
+    }
+  }catch(e){
+    box.className = "hit-box"; box.style.borderColor = "#fca5a5";
+    box.innerHTML = "校验请求失败：" + esc(e.message);
+  }
+}
+
+function toggleAuditPanel(){
+  const p = document.getElementById("auditPanel");
+  p.style.display = p.style.display === "none" ? "block" : "none";
+  if(p.style.display !== "none" && !state.auditLoaded) loadAuditLog(0);
+}
+
+async function loadAuditLog(offset){
+  offset = Math.max(0, offset || 0);
+  state.auditOffset = offset;
+  const params = [];
+  const add = (k, v) => { if(v) params.push(k + "=" + encodeURIComponent(v)); };
+  add("actor", document.getElementById("auditActor").value.trim());
+  add("action", document.getElementById("auditAction").value);
+  add("object_id", document.getElementById("auditObject").value.trim());
+  add("date_from", document.getElementById("auditFrom").value);
+  add("date_to", document.getElementById("auditTo").value);
+  params.push("limit=50", "offset=" + offset);
+  const body = document.getElementById("auditBody");
+  body.innerHTML = '<tr><td colspan="7"><span class="loading"></span></td></tr>';
+  try{
+    const d = await jget("/api/audit?" + params.join("&"));
+    state.auditLoaded = true;
+    const sel = document.getElementById("auditAction");
+    if(sel.options.length <= 1){
+      (d.actions || []).forEach(a=>{
+        const o = document.createElement("option"); o.value = a; o.textContent = a; sel.appendChild(o);
+      });
+    }
+    document.getElementById("auditCount").textContent =
+      `共 ${d.total} 条 · 第 ${offset + 1}–${offset + d.count} 条`;
+    if(!d.records.length){
+      body.innerHTML = '<tr><td colspan="7" style="color:var(--muted);">没有符合条件的审计记录。</td></tr>';
+      return;
+    }
+    body.innerHTML = d.records.map(r=>`<tr>
+      <td style="font-family:monospace;">${r.seq}</td>
+      <td style="font-family:monospace;font-size:11.5px;">${esc(r.occurred_at)}</td>
+      <td>${esc(r.actor)}</td>
+      <td>${esc(r.action)}</td>
+      <td style="font-family:monospace;font-size:11.5px;">${esc(r.object_type)}<br>${esc(r.object_id||"—")}</td>
+      <td style="font-size:12px;max-width:300px;word-break:break-all;">${esc(JSON.stringify(r.detail||{}).slice(0,160))}</td>
+      <td style="font-family:monospace;font-size:10.5px;color:var(--muted);word-break:break-all;">${esc((r.record_hash||"").slice(0,16))}…</td>
+    </tr>`).join("");
+  }catch(e){
+    body.innerHTML = `<tr><td colspan="7" style="color:var(--red);">加载失败：${esc(e.message)}</td></tr>`;
+  }
+}
+

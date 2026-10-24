@@ -15,6 +15,7 @@ from ai_diagnosis import AiUnavailableError, get_provider, LiveProvider
 from case_store import dataset_meta, list_cases as demo_list_cases, get_case as demo_get_case
 from infra.db import ensure_case_library_schema, ensure_submissions_table, get_db
 from infra.security import is_read_only
+from infra import audit as audit_chain
 from services.triage import triage
 from services.screening import screen
 from services.ctr import build_ctr
@@ -25,6 +26,7 @@ from api.cases import router as cases_router
 from api.linkage import router as linkage_router
 from api.admin import router as admin_router
 from api.cdd import router as cdd_router
+from api.audit import router as audit_router
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PORT = int(os.getenv("QINGYUAN_PORT", "8000"))
@@ -62,6 +64,7 @@ app.include_router(cases_router)
 app.include_router(linkage_router)
 app.include_router(admin_router)
 app.include_router(cdd_router)
+app.include_router(audit_router)
 
 
 def db():
@@ -70,6 +73,7 @@ def db():
 
 ensure_submissions_table()
 ensure_case_library_schema()
+audit_chain.ensure_schema()
 
 
 # ---------------- API ----------------
@@ -113,6 +117,15 @@ def get_case(case_id: str):
             conn.close()
     if not case:
         raise HTTPException(404, f"案例 {case_id} 不存在")
+    # 已定性案例库（LIB-/DIS-）是业务档案而非公开演示物料，查看行为留痕；
+    # 演示案例（source=demo）为公开内容，不计入审计链
+    if case.get("source") and case["source"] != "demo":
+        conn = db()
+        try:
+            audit_chain.record(conn, actor="演示用户（未鉴权）", action="案例库查看",
+                               object_type="library_case", object_id=case_id)
+        finally:
+            conn.close()
     return case
 
 
@@ -231,9 +244,28 @@ def list_rules():
 def screening(q: str = ""):
     """名单筛查：命中不走 AI，先限制后核验。实现见 services/screening.py。"""
     try:
-        return screen(q)
+        result = screen(q)
     except ValueError as e:
         raise HTTPException(400, str(e))
+    # 筛查行为留痕（只读演示模式下不记录，保持库不可变）
+    conn = db()
+    try:
+        rec = audit_chain.record(
+            conn, actor="演示用户（未鉴权）", action="名单筛查",
+            object_type="screening", object_id=(q or "")[:80],
+            detail={"hit": result.get("hit", False),
+                    "matches": [m.get("name", "") for m in result.get("matches", [])]})
+    finally:
+        conn.close()
+    if rec:
+        result["audit"] = {"recorded": True, "seq": rec["seq"]}
+        if not result["hit"]:
+            result["action"] = f"未命中（本次筛查已写入审计链 #{rec['seq']}）"
+    else:
+        result["audit"] = {"recorded": False}
+        if not result["hit"]:
+            result["action"] = "未命中（只读演示模式，不记录审计）"
+    return result
 
 
 @app.get("/api/ctr")

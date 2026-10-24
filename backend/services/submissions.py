@@ -148,7 +148,7 @@ def create(conn, payload: dict):
         "SELECT id, report_no, receipt_no, submitted_at FROM submissions WHERE report_no=?",
         (payload["report_no"],)).fetchone()
     if dup:
-        return dict(dup)
+        return dict(dup, created=False)
 
     supersedes = _validate_supersedes(conn, payload)
 
@@ -191,7 +191,7 @@ def create(conn, payload: dict):
     row = conn.execute(
         "SELECT id, report_no, receipt_no, submitted_at FROM submissions WHERE receipt_no=?",
         (receipt_no,)).fetchone()
-    return dict(row)
+    return dict(row, created=True)
 
 
 def list_all(conn):

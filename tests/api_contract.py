@@ -505,6 +505,48 @@ class ContractTest(unittest.TestCase):
         self.assertEqual(CLIENT.get("/api/linkage/coverage").json()["library_cases"], 0)
         self.assertEqual(CLIENT.get("/api/submissions").json()["count"], 0)
 
+        # 审计链不随重置清空：重置动作本身留痕，且链仍完整
+        r = CLIENT.get("/api/audit", params={"action": "演示重置"})
+        self.assertGreaterEqual(r.json()["total"], 1)
+        v = CLIENT.get("/api/audit/verify").json()
+        self.assertTrue(v["ok"], v)
+
+    def test_10_audit(self):
+        """审计链接口：写入留痕、读操作留痕、隐私红线、检索过滤、全链校验通过。"""
+        r = CLIENT.get("/api/audit/verify")
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.json()["ok"], r.json())
+        self.assertGreater(r.json()["records"], 0)  # 之前的报送/筛查已入链
+
+        # 写操作留痕：报送写入
+        r = CLIENT.get("/api/audit", params={"action": "报送写入", "limit": 200})
+        self.assertEqual(r.status_code, 200)
+        d = r.json()
+        self.assertGreaterEqual(d["total"], 1)
+        self.assertTrue(all(x["action"] == "报送写入" for x in d["records"]))
+        rec = d["records"][0]
+        self.assertIn("record_hash", rec)
+        # 服务器时间戳：ISO + 毫秒 + 北京时区
+        self.assertRegex(rec["occurred_at"],
+                         r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}\+08:00$")
+
+        # 读操作留痕：名单筛查（含未命中的）
+        CLIENT.get("/api/screening", params={"q": "李某"})
+        r = CLIENT.get("/api/audit", params={"action": "名单筛查"})
+        self.assertGreaterEqual(r.json()["total"], 1)
+
+        # CDD 留痕 + 隐私红线：审计里只有掩码，绝不落完整证件号
+        CLIENT.post("/api/cdd/personal",
+                    json={"name": "赵某", "id_no": "999999199303125513"})
+        r = CLIENT.get("/api/audit", params={"action": "CDD身份核验"})
+        self.assertGreaterEqual(r.json()["total"], 1)
+        self.assertNotIn("999999199303125513",
+                         json.dumps(r.json()["records"], ensure_ascii=False))
+
+        # 非法参数：日期格式错误 → 422
+        self.assertEqual(
+            CLIENT.get("/api/audit", params={"date_from": "昨天"}).status_code, 422)
+
     def test_11_live_provider_signature(self):
         """Live 模式回归（P0-1）：available/diagnose 与 Mock 同签名，不再必然 500。
 

@@ -228,6 +228,33 @@
         <button class="btn ghost small" onclick="loadSubmissions()" style="margin-left:auto;">刷新</button></h3>
         <div class="panel-body" id="subBody" style="padding:0;"><span class="loading"></span></div>
       </div>
+      <div class="card"><h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">审计链 <small>append-only · SHA256 哈希链 · 服务器毫秒时间戳（+08:00）</small>
+        <button class="btn small" onclick="verifyAuditChain()" style="margin-left:auto;">完整性校验</button>
+        <button class="btn ghost small" onclick="toggleAuditPanel()">审计查询</button></h3>
+        <div class="panel-body">
+          <div id="auditVerifyBox" class="miss-box" style="display:none;"></div>
+          <div id="auditPanel" style="display:none;margin-top:10px;">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+              <input id="auditActor" class="el-input" style="max-width:170px;" placeholder="操作人">
+              <select id="auditAction" class="el-input" style="max-width:170px;"><option value="">全部动作</option></select>
+              <input id="auditObject" class="el-input" style="max-width:200px;" placeholder="对象编号（如回执号 / 案例号）">
+              <input type="date" id="auditFrom" class="el-input" style="max-width:150px;">
+              <span style="color:var(--muted);font-size:12px;">至</span>
+              <input type="date" id="auditTo" class="el-input" style="max-width:150px;">
+              <button class="btn small" onclick="loadAuditLog(0)">查询</button>
+              <span id="auditCount" style="font-size:12px;color:var(--muted);"></span>
+            </div>
+            <div style="overflow-x:auto;"><table class="grid"><thead><tr>
+              <th>#</th><th>时间（服务器 +08:00）</th><th>操作人</th><th>动作</th><th>对象</th><th>摘要</th><th>record_hash</th>
+            </tr></thead><tbody id="auditBody"><tr><td colspan="7" style="color:var(--muted);">点击「查询」加载审计记录；写入类操作与名单筛查、CDD 查询、案例库查看均入链。</td></tr></tbody></table></div>
+            <div style="display:flex;gap:10px;margin-top:8px;align-items:center;">
+              <button class="btn ghost small" onclick="loadAuditLog(Math.max(0,(state.auditOffset||0)-50))">上一页</button>
+              <button class="btn ghost small" onclick="loadAuditLog((state.auditOffset||0)+50)">下一页</button>
+              <span style="font-size:11.5px;color:var(--muted);">审计链不随演示重置清空——重置动作本身也是一条审计记录。</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <footer class="footer">
