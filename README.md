@@ -11,13 +11,16 @@
                 ├─ 演示数据读取层 case_store.py：读 backend/data/demo_cases.json
                 ├─ 规则域 domain/rules/：base_rules.py（R001–R008）+ typed_rules.py（R009）+ cdd_rules.py（R017）
                 │                     registry.py 注册表 · engine.py 执行 · 阈值读 rules.params
-                ├─ AI 诊断层 ai_diagnosis.py：Mock/Live 双 Provider
+                ├─ AI 诊断层 ai_diagnosis.py：Mock/Live 双 Provider（Live 带输出结构校验护栏）
                 ├─ 三向分流：放行 / 拦截 / 人工复核
                 ├─ 案例召回 domain/cases/：特征提取 + 字符 n-gram TF-IDF + 结构特征，输出 top-k 相似案例
                 ├─ 报告域 domain/report/：elements.py（62 项 JSON）+ builder.py + text.py + deadline.py
+                ├─ CDD services/cdd.py：对公工商尽调 / 个人身份核验（GB 11643 / GB 32100 真实校验算法，企查查接入位）
+                ├─ 审计链 infra/audit.py：append-only + SHA256 哈希链 + 服务器毫秒时间戳 + 触发器防改删
                 └─ SQLite 参考库（backend/data/qingyuan.db）
                      ├─ 8 份法规 239 条条款（含 FTS5 trigram 中文检索）
-                     └─ 17 条规则定义（其中 10 条可执行，R011–R016 规划中）
+                     ├─ 17 条规则定义（其中 10 条可执行＝R001–R009+R017，R010–R016 规划中）
+                     └─ audit_log 审计链（重置不清空）
 
 演示案例不进 SQLite：
   backend/data/demo_cases.json —— 17 条合成案例（dataset=demo v1.1）
@@ -92,7 +95,26 @@ QINGYUAN_READ_ONLY=1 ./run.sh                  # 公开演示：只读，禁止�
 
 报告编号格式为 `STR-YYYYMMDD-案例号-时分秒毫秒+流水`，同一案例同一天重复生成也不会重复；台账写入时再做一次编号冲突检查。
 
+回执号由**服务端生成**（`RX-YYYYMMDD-NNNNN`，当日递增），幂等以报告编号为准：同一份报告重复提交（重试/双击）返回同一条台账记录；前端「提交报送」先写台账成功、再置「已报送」状态，写库失败时报告保持「已签字待报送」可重新提交。
+
 演示环境不会再出现「报完就消失」；记录持久化在 `backend/data/qingyuan.db`，重启后仍在。
+
+### 审计链（防篡改留痕）
+
+金融审计的三环：谁操作的（actor）、做了什么（内容）、不可抵赖（哈希链）。台账页下方「审计链」卡片提供**完整性校验**按钮与**审计查询**面板。
+
+| 设计点 | 实现 |
+|---|---|
+| 只增不改 | `audit_log` 表 append-only；数据库触发器直接拒绝 UPDATE/DELETE |
+| 哈希链 | `record_hash = SHA256(seq｜时间戳｜操作人｜动作｜对象｜内容｜prev_hash)`，首条锚定全零 Genesis；改任何一条的任何字段，其后整条链校验全部失败 |
+| 时间戳 | 服务器时钟（Asia/Shanghai +08:00，毫秒精度）+ 单调递增序号；客户端时间不参与证据链 |
+| 校验 | `GET /api/audit/verify` 全链重放（逐条重算并核对链接与序号连续）；绕过触发器直接改库文件也能检出（有专门测试） |
+| 埋点 | 写：报送写入/更正报送/人工定性/历史回填/演示重置；读：名单筛查、CDD 查询、已定性案例库查看（演示案例为公开内容不入链） |
+| 隐私 | CDD 证件号只记掩码，绝不落完整号码；操作人身份如实标注「未鉴权」 |
+| 只读模式 | 不记录新审计（公开部署保持库不可变），校验与查询仍开放 |
+| 重置 | 审计链**不随**演示重置清空——重置动作本身是一条审计记录 |
+
+> 为什么不用区块链：单机构内的审计防篡改，行业实践是 append-only + 哈希链 + 权限隔离（+ 生产环境的 HMAC 签名与外部锚定）；联盟链用于跨机构互信场景，在这里是过度设计。
 
 ## 报告核对口径
 
@@ -113,10 +135,11 @@ python -m playwright install chromium
 
 python3 tests/case_similarity.py      # 相似案例召回，6/6
 python3 tests/case_linkage.py         # 案例库与规则库联动，7/7
-python3 tests/api_contract.py        # API 契约，10/10
-python3 tests/e2e_smoke.py           # 浏览器端到端，25/25
-python3 tests/auth_state_machine.py  # 授权状态机，30/30
-python3 tests/run_all.py             # 依次运行以上五项
+python3 tests/audit_chain.py          # 审计防篡改链，7/7
+python3 tests/api_contract.py         # API 契约，16/16
+python3 tests/e2e_smoke.py            # 浏览器端到端，26/26
+python3 tests/auth_state_machine.py   # 授权状态机，31/31
+python3 tests/run_all.py              # 依次运行以上六项
 ```
 
 - API 契约测试在临时数据库副本上运行，不会污染 `backend/data/qingyuan.db`。
@@ -124,7 +147,9 @@ python3 tests/run_all.py             # 依次运行以上五项
 - 授权状态机测试在 8138 端口起独立服务，覆盖草稿 → 待复核 → 预览 → 退回 → 重新授权 → 报送，并校验台账中的修订与退回留痕。
 - 相似案例测试校验：自身排除、排序、分档、已知相似对；阈值来自 `backend/data/case_similarity.json`，不是监管统一标准。
 - 案例联动测试校验：报送后自动沉淀、人工排除负样本、幂等、合并替换、覆盖矩阵、规则有效性、历史回填。
-- 规则与报告回归：`python3 backend/scripts/test_regression.py`，17/17（含要素 JSON 与规则参数字典完整性校验）。
+- 审计链测试校验：哈希链衔接、服务器毫秒时间戳、触发器拦截改删、**绕过触发器直接改库后全链重放仍能检出**、只读模式跳过记录、检索过滤。
+- 契约测试另含报送加固回归：服务端回执号（RX-日期-序号）、按报告编号幂等、类型混淆 422、supersedes 越权拦截、更正闭环、CDD 信用代码校验、审计隐私红线（证件号只记掩码）。
+- 规则与报告回归：`python3 backend/scripts/test_regression.py`，22/22（含要素 JSON 与规则参数字典完整性校验）。
 
 > 演示环境模拟授权动作；真实系统应由指纹仪、人脸识别或统一身份认证返回授权结果，不接受手工点选。
 
@@ -234,12 +259,14 @@ QCC_API_KEY=xxxx    # 企查查开放平台 Key（未配置时页面显示"未�
 | `POST /api/report/{id}` | 生成 STR 初稿：62 项官方要素 + 中英双语正文 |
 | `GET /api/screening?q=` | 名单筛查（模拟名单库，命中不经 AI） |
 | `GET /api/ctr` | 大额交易逐日累计（3 号令阈值） |
-| `POST /api/submissions` | 写入上报台账（按回执号幂等） |
+| `POST /api/submissions` | 写入上报台账（**回执号服务端生成 RX-日期-序号；按报告编号幂等**；三级签字齐全性校验；supersedes 三重校验） |
 | `GET /api/submissions` | 上报台账列表 |
 | `GET /api/submissions/{id}` | 单条上报记录详情（含报告快照与签字） |
+| `GET /api/audit` | 审计链检索（操作人/动作/对象/日期过滤，分页） |
+| `GET /api/audit/verify` | 审计链全链重放校验（逐条重算 SHA256 并核对链接） |
 | `GET /api/trace/{id}` | 溯源链（规则→法规条款原文→官方类型→处罚事由） |
 | `GET /api/clauses/{id}` | 法规条款原文 |
-| `GET /api/rules` | 规则库（17 条定义，10 条可执行，R011–R016 规划中；executable 以后端注册表为准） |
+| `GET /api/rules` | 规则库（17 条定义，10 条可执行＝R001–R009+R017，R010–R016 规划中；executable 以后端注册表为准） |
 | `GET /api/regulations` | 法规库清单（8份） |
 | `GET /api/fx` | 演示折算汇率（取整估算值 + 真实中间价，界面汇率条与数据金额同源） |
 | `GET /api/cdd/info` | CDD 数据源与接入路径（对公工商 / 个人身份核验） |
