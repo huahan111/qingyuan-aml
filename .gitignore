@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+backend/data/qingyuan.db
+backend/data/backups/

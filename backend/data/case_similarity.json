@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "method": "char-bigram-tfidf + structured-features",
+  "weights": {
+    "text": 0.65,
+    "structured": {
+      "channels": 0.25,
+      "tx_types": 0.25,
+      "amount": 0.25,
+      "night": 0.15,
+      "count": 0.1
+    }
+  },
+  "thresholds": {
+    "high": 0.6,
+    "medium": 0.45
+  },
+  "top_k": 3,
+  "calibration": {
+    "sample": "demo_cases v1.1，17 条案例、136 个两两组合",
+    "observed": "最高 0.719（BLOCK-02↔BLOCK-04）；≥0.60 共 2 对、≥0.45 共 5 对；全量范围 0.018–0.719",
+    "note": "阈值按本方法与本演示集校准，换模型/换数据必须重算；不是监管统一标准。样本仅 17 条，分档偏保守；附言为空时文本特征权重会偏向结构特征，演示时按'参考信号'表述。"
+  },
+  "disclaimer": "相似度是人工复核的参考信号，不直接产生拦截或报送结论；需用已定性案例回测召回率与误报率。"
+}

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>清源AML · 反洗钱智能监测平台</title>
+<link rel="stylesheet" href="/static/css/app.css?v=13">
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="name">清源AML</div>
+      <div class="sub">反洗钱智能监测平台 · MVP</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" data-page="workbench" onclick="showPage('workbench')"><span class="ico">◱</span> 工作台</div>
+      <div class="nav-item" data-page="flow" onclick="showPage('flow')"><span class="ico">▶</span> 全流程演示</div>
+      <div class="nav-item" data-page="alerts" onclick="showPage('alerts')"><span class="ico">⚠</span> 可疑交易预警</div>
+      <div class="nav-item" data-page="screening" onclick="showPage('screening')"><span class="ico">⌕</span> 名单筛查</div>
+      <div class="nav-item" data-page="ctr" onclick="showPage('ctr')"><span class="ico">¥</span> 大额交易报告</div>
+      <div class="nav-item" data-page="cdd" onclick="showPage('cdd')"><span class="ico">✎</span> 客户尽职调查</div>
+      <div class="nav-item" data-page="rating" onclick="showPage('rating')"><span class="ico">◐</span> 客户风险评级</div>
+      <div class="nav-item" data-page="rules" onclick="showPage('rules')"><span class="ico">⚙</span> 监测规则配置</div>
+      <div class="nav-item" data-page="reports" onclick="showPage('reports')"><span class="ico">▤</span> 上报台账</div>
+    </nav>
+    <div class="side-foot">
+      <b>演示系统</b><br>数据均为脱敏合成<br>不构成任何实际业务的合规依据
+    </div>
+  </aside>
+
+  <div class="content">
+    <header class="topbar">
+      <div>
+        <h1 id="pageTitle">工作台</h1>
+        <div class="sub" id="pageSub">选案例 → 规则 + AI 研判 → 三向分流 → 生成 STR</div>
+      </div>
+      <div class="spacer"></div>
+      <span id="readonlyTag" class="badge-demo" style="display:none;background:#fee2e2;color:#b91c1c;border-color:#fca5a5;">只读演示</span>
+      <button class="btn ghost small" id="btnResetDemo" onclick="resetDemo()">重置演示数据</button>
+      <span class="badge-demo">演示系统 · 数据均为脱敏合成</span>
+      <span class="provider-tag">AI 诊断源：<b id="providerName">检测中…</b></span>
+    </header>
+
+    <!-- ============ 工作台 ============ -->
+    <section id="page-workbench" class="page active">
+      <div class="dash-banner">
+        <b>产品设计说明：</b>把一线执行中「看数据 → 翻资料 → 凭经验判断 → 手工写报告」重构为
+        「规则引擎 → AI 诊断 → 人工处置 → 一键生成 STR」的闭环。当前展示的是<b>演示数据集</b>，全部案例为脱敏合成数据。
+      </div>
+      <div class="stat-grid" id="dashStats"><div class="stat"><div class="lbl">加载中</div><div class="num">—</div></div></div>
+      <div class="dash-two">
+        <div class="card"><h3>近 7 个交易日交易量 <small>来自演示数据集</small></h3>
+          <div class="panel-body" id="dashTrend"><span class="loading"></span></div></div>
+        <div class="card"><h3>高频触发规则 TOP 5 <small>按关联案例数</small></h3>
+          <div class="panel-body" id="dashRules"><span class="loading"></span></div></div>
+      </div>
+      <div class="card dash-todo-card"><h3>今日待办 <small>拦截优先，灰区次之</small></h3>
+        <div class="panel-body" style="padding:0;" id="dashTodo"><span class="loading"></span></div></div>
+      <div class="quick-row" id="quickRow"></div>
+      <div class="dash-section-title">案例库 · 选择案例开始研判</div>
+      <div class="layout">
+        <div class="case-list" id="caseList">
+          <h3>案例库</h3>
+          <div class="empty"><span class="loading"></span></div>
+        </div>
+        <div class="main-col" id="mainCol">
+          <div class="panel"><div class="empty">
+            <p style="font-size:16px;margin-bottom:8px;">← 请从左侧选择一个案例开始</p>
+            <p>演示「规则引擎 → AI 诊断 → 三向分流 → 法规溯源 → STR 初稿」完整链路</p>
+          </div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 全流程演示 ============ -->
+    <section id="page-flow" class="page">
+      <div class="card">
+        <div class="flow-body">
+          <div class="steps" id="flowSteps">
+            <div class="step on">① 系统扫描</div>
+            <div class="step">② 预警筛选</div>
+            <div class="step">③ 研判处置</div>
+            <div class="step">④ STR 生成</div>
+            <div class="step">⑤ 预览签署</div>
+            <div class="step">⑥ 复核授权</div>
+            <div class="step">⑦ 报送人行</div>
+          </div>
+          <div id="flowBody"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 可疑交易预警 ============ -->
+    <section id="page-alerts" class="page">
+      <div class="note-bar">当前数据集：<b id="dsTag">演示数据集</b>　全部案例为脱敏合成数据，仅用于功能演示与案例展示。</div>
+      <div class="card"><h3>可疑交易预警 <small>规则引擎 + AI 预诊断后按风险分级</small></h3>
+        <div class="panel-body" id="alertBody"><span class="loading"></span></div></div>
+    </section>
+
+    <!-- ============ 名单筛查 ============ -->
+    <section id="page-screening" class="page">
+      <div class="note-bar warn"><b>红线：</b>名单命中不走 AI，先限制后核验。命中即冻结账户，24 小时内人工复核。</div>
+      <div class="card"><h3>客户与交易对手筛查 <small>当前为模拟名单库，与 R005 共用</small></h3>
+        <div class="panel-body">
+          <div class="screening-row">
+            <input id="scanInput" placeholder="输入姓名或主体名称（演示可用下方示例）" onkeydown="if(event.key==='Enter')runScan()">
+            <button class="btn" onclick="runScan()">立即筛查</button>
+          </div>
+          <div class="chips">示例：
+            <span class="chip" onclick="fillScan('张某')">张某（未命中）</span>
+            <span class="chip" onclick="fillScan('恐怖组织A')">恐怖组织A（命中）</span>
+            <span class="chip" onclick="fillScan('制裁实体B')">制裁实体B（命中）</span>
+            <span class="chip" onclick="fillScan('XX洗钱团伙')">XX洗钱团伙（命中）</span>
+          </div>
+          <div id="scanResult"></div>
+        </div></div>
+    </section>
+
+    <!-- ============ 大额交易报告 ============ -->
+    <section id="page-ctr" class="page">
+      <div class="note-bar"><b>与可疑报告的分工：</b>大额报告是客观标准（金额达标即报），系统自动完成；可疑报告是主观判断，需 AI 辅助 + 人工研判。两条线并行、互不替代。</div>
+      <div class="stat-grid" id="ctrStats"></div>
+      <div class="card"><h3>大额交易逐日累计 <small>3 号令第五条：现金 5 万 / 自然人转账 50 万 / 对公转账 200 万</small></h3>
+        <div class="panel-body" id="ctrBody"><span class="loading"></span></div></div>
+    </section>
+
+    <!-- ============ CDD ============ -->
+    <section id="page-cdd" class="page">
+      <div class="note-bar static">本页可实际发起尽调查询：<b>对公</b>走工商尽调（内置 3 家模拟企业；企查查/天眼查接入位已预留，需 API Key，未配置时明确报“未接入”）；<b>个人</b>走身份核验（GB 11643 校验位 + 模拟联网核查）。真实环境须接人行联网核查公民身份信息系统（仅银行业金融机构）或持牌商用二/三要素核验。所有查询<b>不落库、不保存证件号</b>。</div>
+      <div class="two-col">
+        <div class="card"><h3>对公 · 工商尽调</h3><div class="panel-body">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            <span style="width:132px;font-size:12.5px;color:var(--muted);">企业名称</span>
+            <input id="cddEntName" class="el-input" style="flex:1;" placeholder="如 ZZ供应链有限公司（对公）">
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+            <span style="width:132px;font-size:12.5px;color:var(--muted);">统一社会信用代码</span>
+            <input id="cddEntUscc" class="el-input" style="flex:1;" placeholder="可选，18 位">
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <button class="btn" onclick="runCddEnterprise()">发起尽调</button>
+            <span id="cddEntProvider" style="font-size:12px;color:var(--muted);"></span>
+          </div>
+          <div id="cddEntResult" style="margin-top:12px;"></div>
+        </div></div>
+        <div class="card"><h3>个人 · 身份核验</h3><div class="panel-body">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            <span style="width:132px;font-size:12.5px;color:var(--muted);">姓名</span>
+            <input id="cddPerName" class="el-input" style="flex:1;" placeholder="如 赵某">
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            <span style="width:132px;font-size:12.5px;color:var(--muted);">身份证号</span>
+            <input id="cddPerId" class="el-input" style="flex:1;" placeholder="18 位（末位可为 X）">
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+            <span style="width:132px;font-size:12.5px;color:var(--muted);">证件有效期</span>
+            <input id="cddPerExp" class="el-input" style="flex:1;" placeholder="YYYY-MM-DD（可选）">
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <button class="btn" onclick="runCddPersonal()">发起核验</button>
+            <span id="cddPerProvider" style="font-size:12px;color:var(--muted);"></span>
+          </div>
+          <div id="cddPerResult" style="margin-top:12px;"></div>
+          <div class="str-note" style="margin-top:10px;">演示用合成号（校验位合法、不对应任何真实自然人）：赵某 999999199303125513 · 张某 999999198801017780</div>
+        </div></div>
+      </div>
+      <div class="two-col" style="margin-top:14px;">
+        <div class="card"><h3>尽职调查三步</h3><div class="panel-body">
+          <div class="cdd-step"><div class="no">1</div><div class="txt"><b>识别</b>核对客户及受益所有人身份，了解业务关系与交易目的；不得以“客户不愿提供”为由跳过。</div></div>
+          <div class="cdd-step"><div class="no">2</div><div class="txt"><b>核实</b>通过权威证件、公开渠道或实地核查验证信息；对高风险情形启动 EDD。</div></div>
+          <div class="cdd-step"><div class="no">3</div><div class="txt"><b>留痕</b>记录识别与核实过程、材料清单、审批人；无法完成 CDD 的，不得建立或维持业务关系。</div></div>
+        </div></div>
+        <div class="card"><h3>分级执行</h3><div class="panel-body" style="font-size:12.5px;line-height:1.9;">
+          <p><span class="pill green">简化</span> 低风险客户，可简化后续更新频率，但身份识别不可省。</p>
+          <p style="margin-top:8px;"><span class="pill blue">标准</span> 一般客户，建立关系时完成识别 + 核实 + 风险评级。</p>
+          <p style="margin-top:8px;"><span class="pill red">强化 EDD</span> 高风险、PEP、涉恐高风险地区、复杂股权结构；需资金来源与用途证明、受益所有人穿透、高级管理层审批。</p>
+          <p style="margin-top:10px;color:var(--muted);">对应灰区案例：GREY-01 留学学费、GREY-02 跨境电商、GREY-03 境外佣金、GREY-04 赡家款。材料齐→放行，材料缺→转人工复核。</p>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============ 风险评级 ============ -->
+    <section id="page-rating" class="page">
+      <div class="note-bar static">静态展示页：评级模型为示例口径，未接后端评分引擎；客户风险等级取自演示数据集。</div>
+      <div class="two-col">
+        <div class="card"><h3>客户风险等级分布</h3><div class="panel-body" id="ratingBody"><span class="loading"></span></div></div>
+        <div class="card"><h3>评级因素（示例）</h3><div class="panel-body" style="font-size:12.5px;line-height:1.9;">
+          <p><b>客户维度：</b>职业/行业、国籍与地区、开户方式、受益所有人透明度、PEP 身份。</p>
+          <p style="margin-top:8px;"><b>业务维度：</b>账户类型、跨境暴露、现金使用比例、非面对面渠道占比。</p>
+          <p style="margin-top:8px;"><b>行为维度：</b>交易频率与金额偏离度、对手方地域分散度、历史预警与排除记录。</p>
+          <p style="margin-top:10px;color:var(--muted);">评级结果决定 CDD 强度与持续监测频率，不直接等同于可疑结论。</p>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============ 规则配置 ============ -->
+    <section id="page-rules" class="page">
+      <div class="note-bar">规则库来自 SQLite（只读展示）：定义 17 条，<b>MVP 可执行 10 条（R001–R010，含 CDD 条线 R017）</b>；R011–R016 为规划中，需接入商户、报关、关系网络等数据后启用。</div>
+      <div class="card"><h3>监测规则 <small>参数与法条依据只读</small></h3>
+        <div class="panel-body" id="rulesBody"><span class="loading"></span></div></div>
+      <div class="card"><h3>官方类型 × 规则覆盖 <small>诚实标注，不把规划中算作已覆盖；案例支撑来自演示库 + 已定性库</small></h3>
+        <div class="panel-body" id="coverageBody"><span class="loading"></span></div></div>
+      <div class="card"><h3>规则有效性 <small>案例库反哺：命中、确认、排除与确认率</small></h3>
+        <div class="panel-body" id="effectivenessBody"><span class="loading"></span></div></div>
+      <div class="card"><h3>已定性案例库 <small>报送完成后自动沉淀，供相似案例召回</small></h3>
+        <div class="panel-body" id="caseLibraryBody"><span class="loading"></span></div></div>
+    </section>
+
+    <!-- ============ 上报台账 ============ -->
+    <section id="page-reports" class="page">
+      <div class="note-bar">上报台账：持久化记录每一次已报送的 STR，含回执号、报告编号、案例、报送时间、三级签字人与报告版本。记录存入 SQLite 运营表，与演示案例数据分开。内部流转（网点 → 支行 → 分行 → 总行）为后续设计，当前台账记录直接报送 CAMLMAC。</div>
+      <div class="stat-grid" id="subStats">
+        <div class="stat"><div class="lbl">加载中</div><div class="num">—</div></div>
+      </div>
+      <div class="card" style="margin-bottom:14px;"><div class="panel-body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <input id="subSearch" class="el-input" style="max-width:270px;" placeholder="回执号 / 报告号 / 案例 / 客户 / 经办" oninput="renderSubmissions()">
+        <input type="date" id="subFrom" class="el-input" style="max-width:150px;" onchange="renderSubmissions()">
+        <span style="color:var(--muted);font-size:12px;">至</span>
+        <input type="date" id="subTo" class="el-input" style="max-width:150px;" onchange="renderSubmissions()">
+        <button class="btn ghost small" onclick="clearSubFilters()">重置</button>
+        <button class="btn small" onclick="exportSubmissions()">导出 CSV</button>
+        <span id="subFilterCount" style="font-size:12px;color:var(--muted);"></span>
+      </div></div>
+      <div class="card"><h3 style="display:flex;align-items:center;">上报记录 <small>按报送时间倒序</small>
+        <button class="btn ghost small" onclick="loadSubmissions()" style="margin-left:auto;">刷新</button></h3>
+        <div class="panel-body" id="subBody" style="padding:0;"><span class="loading"></span></div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <b>免责声明</b>：本系统为个人学习与技术演示作品，所有案例数据均为脱敏合成的演示数据，不涉及任何真实客户信息，仅用于功能演示与案例展示；<br>
+      研判逻辑与报告输出仅供学习交流，不构成任何实际业务的合规依据。演示数据集以独立 JSON 文件存放，不写入业务数据库。
+    </footer>
+  </div>
+</div>
+
+<!-- 报告预览 / 签字 -->
+<div id="reportMask" class="mask" onclick="if(event.target===this)closeReport()">
+  <div class="doc">
+    <h2 id="docTitle">可疑交易报告（STR）</h2>
+    <div class="doc-sub" id="docMeta"></div>
+    <div class="doc-toolbar">
+      <div id="docStatus" class="doc-status"></div>
+      <div class="doc-actions">
+        <button class="btn ghost small" id="btnEdit" onclick="toggleEdit()">✎ 编辑修订</button>
+        <button class="btn small" id="btnSaveEdit" style="display:none" onclick="saveEdits()">保存修订</button>
+        <button class="btn ghost small" onclick="printReport()">🖨 打印确认</button>
+        <button class="btn ghost small" onclick="exportReportXml()">导出要素 XML 草稿</button>
+        <button class="btn small" id="docSignBtn" onclick="startSign()">确认初稿 · 进入签字授权</button>
+        <button class="btn small" id="docSubmitBtn" onclick="submitReport()" style="display:none;">提交报送 →</button>
+        <button class="btn ghost small" id="docBackAuth" onclick="backToAuth()" style="display:none;">← 返回签字授权</button>
+        <button class="btn ghost small mask-close" onclick="closeReport()">关闭</button>
+        <span style="font-size:12px;color:var(--muted);" id="docActionHint"></span>
+      </div>
+    </div>
+    <div class="lang-tabs">
+      <span class="lang-tab on" id="lt-tbl" onclick="reportTab('tbl')">要素对照表（62 项）</span>
+      <span class="lang-tab" id="lt-cn" onclick="reportTab('cn')">报告正文（中）</span>
+      <span class="lang-tab" id="lt-en" onclick="reportTab('en')">Report (EN)</span>
+    </div>
+    <div id="formatCheck" class="format-check"></div>
+    <div id="docTbl"></div>
+    <pre id="docCn" style="display:none"></pre>
+    <pre id="docEn" style="display:none"></pre>
+    <div id="signBlock" class="sign-block"></div>
+    <div id="editLog" class="edit-log"></div>
+  </div>
+</div>
+
+<!-- 签字授权：是否确认 → 三级授权 -->
+<div id="signMask" class="mask" onclick="if(event.target===this)closeSign()">
+  <div class="doc sign-doc">
+    <h2>报告签字授权</h2>
+    <div class="doc-sub" id="signMeta"></div>
+    <div id="signBody"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="/static/js/config.js?v=13"></script>
+<script src="/static/js/core.js?v=13"></script>
+<script src="/static/js/dashboard.js?v=13"></script>
+<script src="/static/js/submissions.js?v=13"></script>
+<script src="/static/js/cases.js?v=13"></script>
+<script src="/static/js/report.js?v=13"></script>
+<script src="/static/js/auth.js?v=13"></script>
+<script src="/static/js/flow.js?v=13"></script>
+<script src="/static/js/cdd.js?v=13"></script>
+<script src="/static/js/app.js?v=13"></script>
+</body>
+</html>
