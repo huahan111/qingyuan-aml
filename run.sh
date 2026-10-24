@@ -7,6 +7,12 @@ if [ -f .env ]; then
   set -a; source .env; set +a
 fi
 
+# 本机演示默认：可写、仅监听 127.0.0.1。
+# 注意：直接 `python3 backend/main.py`（容器/托管平台路径）默认只读 + 0.0.0.0（fail-closed），
+# 平台只注入 PORT、无法自定义环境变量，靠代码默认值保证公开实例不可写。
+export QINGYUAN_READ_ONLY="${QINGYUAN_READ_ONLY:-0}"
+export QINGYUAN_HOST="${QINGYUAN_HOST:-127.0.0.1}"
+
 # 检查依赖
 python3 -c "import fastapi, uvicorn" 2>/dev/null || {
   echo "安装依赖中…"; pip3 install -r requirements.txt || exit 1

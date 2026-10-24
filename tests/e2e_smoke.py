@@ -73,6 +73,7 @@ def main():
     env = os.environ.copy()
     env["QINGYUAN_DB"] = db
     env["QINGYUAN_PORT"] = str(PORT)
+    env["QINGYUAN_READ_ONLY"] = "0"   # E2E 全流程含写操作（服务默认只读 fail-closed）
     proc = subprocess.Popen(
         [sys.executable, "backend/main.py"],
         cwd=ROOT, env=env,

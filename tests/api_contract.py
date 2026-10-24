@@ -18,6 +18,7 @@ TMP = tempfile.TemporaryDirectory()
 TEST_DB = os.path.join(TMP.name, "contract.db")
 shutil.copy(SRC_DB, TEST_DB)
 os.environ["QINGYUAN_DB"] = TEST_DB
+os.environ["QINGYUAN_READ_ONLY"] = "0"   # 契约测试含大量写操作（服务默认只读 fail-closed）
 sys.path.insert(0, BACKEND)
 
 import main  # noqa: E402

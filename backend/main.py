@@ -29,7 +29,32 @@ from api.cdd import router as cdd_router
 from api.audit import router as audit_router
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PORT = int(os.getenv("QINGYUAN_PORT", "8000"))
+
+
+def _load_env_file():
+    """加载项目根 .env（KEY=VALUE，# 注释）。已存在的环境变量（含平台注入的 PORT）优先。
+
+    托管平台通常无法自定义环境变量，但支持随项目携带 .env；这里让 main.py 直启
+    也能读到配置，语义与 run.sh 的 `set -a; source .env` 一致。
+    """
+    path = os.path.join(BASE_DIR, "..", ".env")
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key, value = key.strip(), value.strip().strip("'\"")
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+
+_load_env_file()
+
+# 端口优先级：平台注入的 PORT > QINGYUAN_PORT > 8000
+PORT = int(os.getenv("PORT") or os.getenv("QINGYUAN_PORT") or "8000")
 FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
 
 app = FastAPI(title="清源AML MVP", version="1.0.0",
@@ -296,5 +321,10 @@ def index():
 
 if __name__ == "__main__":
     import uvicorn
-    # 默认仅本机访问；公开演示时设 QINGYUAN_HOST=0.0.0.0，并务必同时开启只读模式
-    uvicorn.run(app, host=os.getenv("QINGYUAN_HOST", "127.0.0.1"), port=PORT)
+    # fail-closed 默认：直启即只读 + 0.0.0.0——容器/托管平台零配置可用
+    # （平台只注入 PORT，无法自定义环境变量）。本机可写演示请用 run.sh
+    # （默认 QINGYUAN_READ_ONLY=0 + 仅监听 127.0.0.1）。
+    host = os.getenv("QINGYUAN_HOST", "0.0.0.0")
+    print(f"清源AML MVP 启动：http://{host}:{PORT} "
+          f"| read_only={is_read_only()} | ai_provider={os.getenv('AML_AI_PROVIDER', 'mock')}")
+    uvicorn.run(app, host=host, port=PORT)

@@ -19,7 +19,7 @@ TMP = tempfile.TemporaryDirectory()
 TEST_DB = os.path.join(TMP.name, "audit.db")
 shutil.copy(os.path.join(BACKEND, "data", "qingyuan.db"), TEST_DB)
 os.environ["QINGYUAN_DB"] = TEST_DB
-os.environ.pop("QINGYUAN_READ_ONLY", None)
+os.environ["QINGYUAN_READ_ONLY"] = "0"   # 记录类用例需要可写（默认只读 fail-closed）
 sys.path.insert(0, BACKEND)
 
 from infra import audit  # noqa: E402
@@ -149,7 +149,7 @@ class AuditChainTest(unittest.TestCase):
             finally:
                 conn.close()
         finally:
-            os.environ.pop("QINGYUAN_READ_ONLY", None)
+            os.environ["QINGYUAN_READ_ONLY"] = "0"
 
 
 if __name__ == "__main__":
