@@ -691,6 +691,20 @@ class ContractTest(unittest.TestCase):
             os.environ.pop("AML_AI_PROVIDER", None)
             os.environ.pop("OPENAI_API_KEY", None)
 
+    def test_18_report_en_is_pure_english(self):
+        """英文正文不得出现中文字符：业务数据（姓名/职业/风险等级/对手/可疑类型）走译名层。"""
+        import re as _re
+        cjk = _re.compile(r"[\u4e00-\u9fff]")
+        cases = CLIENT.get("/api/cases").json()["cases"]
+        self.assertTrue(cases)
+        offenders = {}
+        for case in cases:
+            d = CLIENT.post(f"/api/report/{case['case_id']}").json()
+            hits = cjk.findall(d["en"])
+            if hits:
+                offenders[case["case_id"]] = "".join(sorted(set(hits)))
+        self.assertEqual(offenders, {}, f"英文正文仍含中文：{offenders}")
+
 
 if __name__ == "__main__":
     try:

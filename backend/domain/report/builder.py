@@ -26,6 +26,7 @@ from ..rules.common import amt, is_in, purpose
 from .deadline import add_workdays, holiday_count
 from .elements import STR_ELEMS, STR_PART
 from .text import build_text
+from . import i18n
 
 _REPORT_SEQ = count(1)
 
@@ -114,6 +115,13 @@ def build_report(case, diagnosis, rule_hits, conn, report_date=None, diagnosis_o
     type_name = diagnosis.get("official_type_name") or case.get("official_type_name") or "—"
     risk = ci.get("risk_level", "—")
     occupation = ci.get("occupation", "—")
+
+    # 英文正文用的译名（中文数据源不能直接拼进英文句子）
+    name_en = i18n.name_en(name)
+    occupation_en = i18n.occupation_en(occupation)
+    risk_en = i18n.risk_en(risk)
+    top_cp_en = i18n.counterparty_en(top_cp)
+    type_label_en = i18n.type_en(type_no, type_name)
 
     rules = []
     for rid in case.get("rules_hit", []):
@@ -242,6 +250,8 @@ def build_report(case, diagnosis, rule_hits, conn, report_date=None, diagnosis_o
         "top_cp": top_cp, "channel_text": "、".join(channels) or "—",
         "numbered": numbered, "trig": trig, "conclusion": conclusion,
         "type_no": type_no, "type_name": type_name, "hit_ids": hit_ids,
+        "name_en": name_en, "occupation_en": occupation_en, "risk_en": risk_en,
+        "top_cp_en": top_cp_en, "type_en": type_label_en,
     })
 
     now = datetime.now()
