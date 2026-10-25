@@ -155,6 +155,10 @@ ensure_submissions_table()
 ensure_case_library_schema()
 audit_chain.ensure_schema()
 
+# 启用鉴权时确定演示口令（首次启动随机生成并打印一次；仓库内不存任何明文口令）
+if auth_infra.is_auth_enabled():
+    auth_infra.bootstrap_demo_passwords()
+
 
 # ---------------- API ----------------
 
@@ -422,6 +426,21 @@ def list_regulations():
 @app.get("/home")
 def index():
     return FileResponse(os.path.join(FRONTEND_DIR, "index.html"),
+                        headers={"Cache-Control": "no-store, max-age=0"})
+
+
+# 兜底入口：任何非 API、非静态资源路径都回落到单页首页。
+# 旧静态站时代的书签/平台卡片可能带任意后缀（/index.html、/app、带尾斜杠……），
+# 逐条列举永远补不全，这里统一兜住，避免再出现 "Not Found"。
+@app.get("/{full_path:path}", include_in_schema=False)
+def spa_fallback(full_path: str):
+    if full_path.startswith(("api/", "static/")):
+        raise HTTPException(404, "Not Found")
+    root = os.path.abspath(FRONTEND_DIR)
+    target = os.path.abspath(os.path.join(root, full_path))
+    if full_path and target.startswith(root) and os.path.isfile(target):
+        return FileResponse(target)
+    return FileResponse(os.path.join(root, "index.html"),
                         headers={"Cache-Control": "no-store, max-age=0"})
 
 

@@ -5,8 +5,6 @@ from infra import auth
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-DEMO_HINT = "演示账号：jingban / fuhe / shenpi（经办/复核/审批），演示口令 见后端启动日志"
-
 
 @router.post("/login")
 def login(payload: dict = Body(...), response: Response = None):
@@ -33,4 +31,4 @@ def logout(request: Request, response: Response = None):
 def me(request: Request):
     user = auth.get_user(request)
     return {"auth_required": auth.is_auth_enabled(), "user": user,
-            "demo_hint": DEMO_HINT if auth.is_auth_enabled() and not user else ""}
+            "demo_hint": auth.demo_hint() if auth.is_auth_enabled() and not user else ""}

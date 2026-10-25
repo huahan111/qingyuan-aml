@@ -128,7 +128,7 @@ python3 backend/main.py                       # 直启：默认只读 + 0.0.0.0�
 
 默认关闭（公开只读演示 / 本机演示不登录，行为与既往一致）。设 `QINGYUAN_AUTH=1` 开启后：
 
-- **三角色账号**（`backend/data/users.json`，口令仅存 SHA-256 摘要）：`jingban` 经办 · `fuhe` 复核 · `shenpi` 审批，演示口令 `见后端启动日志`（登录页有提示）；
+- **三角色账号**（`backend/data/users.json`，口令仅存 SHA-256 摘要）：`jingban` 经办 · `fuhe` 复核 · `shenpi` 审批。**仓库内不含任何明文口令**——首次以 `QINGYUAN_AUTH=1` 启动时随机生成，打印在后端启动日志里（同时写入 `backend/data/.demo_password`，已 gitignore，仅本机可见）；也可用 `QINGYUAN_DEMO_PASSWORD` 自己指定。
 - **会话**：HMAC-SHA256 签名 Cookie（HttpOnly + SameSite=Lax，8 小时有效），密钥 `QINGYUAN_SESSION_SECRET` 或进程内随机；
 - **未登录 401**：`/api/*`（health / auth 豁免），前端自动弹登录层；
 - **写接口角色校验**：报送写入/人工定性/历史回填/新交易接入＝经办；演示重置＝审批；角色不符 403（中文提示当前登录角色）；

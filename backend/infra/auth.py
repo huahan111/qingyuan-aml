@@ -33,6 +33,75 @@ def is_auth_enabled() -> bool:
     return os.getenv("QINGYUAN_AUTH", "0").strip().lower() in _TRUE
 
 
+_DEMO_PASSWORD_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   "..", "data", ".demo_password")
+_demo_password = ""
+
+
+def _users_path() -> str:
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "users.json")
+
+
+def _rewrite_hashes(password: str):
+    """把三个演示账号的口令摘要统一改成给定口令的摘要（口令本身不落库）。"""
+    digest = hashlib.sha256(password.encode("utf-8")).hexdigest()
+    with open(_users_path(), encoding="utf-8") as f:
+        data = json.load(f)
+    changed = False
+    for user in data.get("users", []):
+        if user.get("password_sha256") != digest:
+            user["password_sha256"] = digest
+            changed = True
+    if changed:
+        with open(_users_path(), "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+
+
+def bootstrap_demo_passwords():
+    """启用鉴权时确定演示口令：环境变量 > 本机保存值 > 首次随机生成。
+
+    仓库里不再放任何明文默认口令；随机值只写到 backend/data/.demo_password（已 gitignore）
+    并在首次启动时打印一次，进程内的 login 接口不会回显口令。
+    """
+    global _demo_password, _users_cache
+    if not is_auth_enabled():
+        return ""
+    pwd = os.getenv("QINGYUAN_DEMO_PASSWORD", "").strip()
+    if not pwd:
+        try:
+            with open(_DEMO_PASSWORD_FILE, encoding="utf-8") as f:
+                pwd = f.read().strip()
+        except FileNotFoundError:
+            pwd = ""
+    generated = False
+    if not pwd:
+        pwd = secrets.token_urlsafe(9)
+        try:
+            with open(_DEMO_PASSWORD_FILE, "w", encoding="utf-8") as f:
+                f.write(pwd)
+            os.chmod(_DEMO_PASSWORD_FILE, 0o600)
+        except OSError:
+            pass
+        generated = True
+    _rewrite_hashes(pwd)
+    _users_cache = None
+    _demo_password = pwd
+    if generated:
+        print(f"[鉴权] 首次启动已随机生成演示口令：{pwd}\n"
+              f"        账号 jingban / fuhe / shenpi（经办/复核/审批）；"
+              f"可用 QINGYUAN_DEMO_PASSWORD 指定，口令只存摘要不落明文。", flush=True)
+    return pwd
+
+
+def demo_hint() -> str:
+    """登录页提示：只给账号，不给口令（口令见启动日志或环境变量）。"""
+    if not is_auth_enabled():
+        return ""
+    return ("演示账号：jingban / fuhe / shenpi（经办/复核/审批）。"
+            "口令为首次启动时随机生成，见后端启动日志；或用 QINGYUAN_DEMO_PASSWORD 指定。")
+
+
 def _secret() -> str:
     return os.getenv("QINGYUAN_SESSION_SECRET", "") or _process_secret
 

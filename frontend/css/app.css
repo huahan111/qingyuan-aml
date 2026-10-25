@@ -319,13 +319,43 @@ details.rule-detail pre{background:#f8fafc;border:1px solid var(--line);border-r
 .trend .val{font-size:11px;font-weight:700;color:var(--primary);margin-bottom:4px}
 .trend .dt{font-size:10.5px;color:var(--muted);margin-top:6px;white-space:nowrap}
 @media (max-width:900px){
-  .dash-two,.quick-row{grid-template-columns:1fr}
-  .pipeline,.two-col{grid-template-columns:1fr}
-  .sidebar{display:none}
-  .layout{grid-template-columns:1fr}
-  .auth-grid,.grey-zone{grid-template-columns:1fr}
+  /* 手机/平板：侧栏改为顶部横向导航（原来直接 display:none 会把导航整个藏掉） */
+  .app{display:block}
+  .sidebar{display:flex;flex-direction:row;align-items:center;width:100%;flex:0 0 auto;
+           height:auto;position:sticky;top:0;z-index:60;border-right:0;
+           border-bottom:1px solid var(--line);overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .sidebar .brand{display:none}
+  .sidebar .nav{flex-direction:row;flex:1 1 auto;gap:2px;padding:8px 10px;
+                overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .sidebar .nav-item{padding:8px 10px;font-size:12.5px;white-space:nowrap;flex:0 0 auto}
+  .sidebar .nav-item .ico{display:none}
+  .sidebar .side-foot{display:none}
+
+  .content{min-width:0}
+  .topbar{padding:12px 14px;gap:8px;flex-wrap:wrap}
+  .topbar h1{font-size:16px}
+  .topbar .badge-demo,.topbar .provider-tag{font-size:11px}
+
+  .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dash-two,.quick-row,.pipeline,.two-col,.layout,.auth-grid,.grey-zone{grid-template-columns:1fr}
   .steps{flex-wrap:wrap}
-  .step{flex:1 1 30%}
+  .step{flex:1 1 42%}
+  .card{padding:0}
+  .panel-body{padding:12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* 窄屏不再给表格设最小宽度：否则整页被撑宽、正文被右侧裁掉。
+     单元格改为自动换行，超宽表格在 .panel-body 内横向滚动。 */
+  table.tx,table.grid{min-width:0;width:100%;font-size:12px}
+  table.grid th,table.grid td,table.tx th,table.tx td{padding:7px 8px;white-space:normal;word-break:break-word}
+  body,.app,.content,.page{max-width:100%;overflow-x:hidden}
+  .dash-banner{white-space:normal;word-break:break-word}
+  .doc{width:100%!important;padding:16px!important}
+  .flow-body,.stat .num{word-break:break-word}
+}
+
+@media (max-width:560px){
+  .stat-grid{grid-template-columns:1fr}
+  .topbar .provider-tag{width:100%;order:9}
+  .step{flex:1 1 100%}
 }
 @media print{
   body{background:#fff}

@@ -4,7 +4,13 @@
 import sqlite3, os, re
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "qingyuan.db")
-SRC_DIR = "docs/regulations"
+# 监管原文默认取仓库内 docs/regulations/（公开法规全文，随仓库分发）；
+# 也可用环境变量 QINGYUAN_REG_SRC 指向自备目录。
+SRC_DIR = os.getenv("QINGYUAN_REG_SRC") or os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "docs", "regulations"))
+if not os.path.isdir(SRC_DIR):
+    raise SystemExit(f"找不到监管原文目录：{SRC_DIR}\n"
+                     f"请把法规 txt 放到 docs/regulations/，或用 QINGYUAN_REG_SRC 指定目录。")
 
 CLAUSE_RE = re.compile(r"^(第[一二三四五六七八九十百零]+条)")
 CHAPTER_RE = re.compile(r"^(第[一二三四五六七八九十百零]+章)")
