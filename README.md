@@ -131,6 +131,26 @@ python3 backend/main.py                       # 直启：默认只读 + 0.0.0.0�
 
 边界：这是演示级实现（单 worker、签名 Cookie、演示口令）；生产必须接机构统一身份认证（4A/AD）+ 硬件令牌，口令策略与锁定由统一认证承担。
 
+## 名单筛查：模糊匹配 v2 与回溯筛查
+
+**打分制分层**（替代 v1 的双向子串包含）：完全一致/别名一致/名单主体整体出现（≥0.95）→ **命中**（冻结+24 小时复核）；模糊相似 ≥0.80 → 命中；≥0.55 → **疑似**（转人工，不直接处置）；普通词片段（如查"组织"撞上名单项片段）只判 0.70 疑似——v1 会把它直接判命中，是已修复的缺陷。相似度＝字符重合（Jaccard）与二元组 Dice 各半，阈值数据化（演示初值）。
+
+**回溯筛查**（`POST /api/screening/back-screening`）：名单更新后对存量客户全量复筛（监管检查必看环节），覆盖演示案例与已定性案例库主体，命中/疑似分列并写入审计链。演示数据下 BLOCK-05（名单关联人）稳定命中，可现场验证。
+
+诚实边界：演示级实现——未含拼音/音译变体库与转写引擎（生产须接官方匹配引擎与名单版本管理）；名单为 3 条模拟数据。
+
+## AI 模型输出评测框架
+
+2026-10 的 32 条评测集（24 可疑 + 8 正常）与五轮人工评测结论（类型归属 45.8%→91.7%，详见《评测结论_五轮收口_最终版.md》）已代码化，扩容后可按同一口径自动复跑：
+
+```bash
+python3 backend/scripts/eval_ai.py --check        # 校验评测集完整性（无需 API key）
+AML_MODEL=deepseek-chat python3 backend/scripts/eval_ai.py --mode constrained
+# baseline＝裸跑（不注入类型清单）／constrained＝注入清单与易混差异（91.7% 口径）
+```
+
+评测集入库为 `backend/data/eval_set_v0.1.json`（xlsx 原样转录，含每条的期望结论/类型/陷阱标注）；输出按例明细与汇总（类型归属率/结论方向/正常样例误报数）。
+
 ## 报告核对口径
 
 打开报告时的核对区做三件事：
@@ -152,7 +172,7 @@ python3 tests/case_similarity.py      # 相似案例召回，6/6
 python3 tests/case_linkage.py         # 案例库与规则库联动，7/7
 python3 tests/audit_chain.py          # 审计防篡改链，7/7
 python3 tests/auth.py                 # 登录鉴权（QINGYUAN_AUTH=1），6/6
-python3 tests/api_contract.py         # API 契约，18/18
+python3 tests/api_contract.py         # API 契约，19/19
 python3 tests/e2e_smoke.py            # 浏览器端到端，26/26
 python3 tests/auth_state_machine.py   # 授权状态机，31/31
 python3 tests/run_all.py              # 依次运行以上七项
@@ -273,7 +293,8 @@ QCC_API_KEY=xxxx    # 企查查开放平台 Key（未配置时页面显示"未�
 | `GET /api/dataset` | 演示数据集元信息（名称/版本/条数/声明） |
 | `POST /api/diagnose/{id}` | 完整研判：规则引擎→AI诊断→三向分流 |
 | `POST /api/report/{id}` | 生成 STR 初稿：62 项官方要素 + 中英双语正文 |
-| `GET /api/screening?q=` | 名单筛查（模拟名单库，命中不经 AI） |
+| `GET /api/screening?q=` | 名单筛查（打分制模糊匹配 v2：命中/疑似/未命中分层，命中不经 AI） |
+| `POST /api/screening/back-screening` | 回溯筛查：名单更新后对存量客户全量复筛（入审计链） |
 | `GET /api/ctr` | 大额交易逐日累计（3 号令阈值） |
 | `GET /api/rating` | 客户风险评级：四维模型实时计算（身份25%+渠道20%+地域20%+行为35%，预警回写，名单/身份不明一票升级，升降级与 EDD） |
 | `GET /api/code-sets` | STR 官方代码集（部分）：3 号令附件公开四表（紧急程度/报送方向/触发点等），第 24 项特征代码未公开、如实标注未收录 |

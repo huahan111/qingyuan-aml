@@ -111,15 +111,42 @@ async function runScan(){
   box.innerHTML = '<p style="color:var(--muted);font-size:13px;">筛查中…</p>';
   try{
     const d = await jget("/api/screening?q=" + encodeURIComponent(q));
+    const bandCls = b => b.includes("命中") ? "red" : b === "高度疑似" ? "red" : b === "疑似" ? "amber" : "gray";
     if(d.hit){
-      const items = d.matches.map(m=>`<div><b>${esc(m.name)}</b>　<span class="pill red">${esc(m.list)}</span>　<span class="pill amber">${esc(m.match_type)}</span></div>`).join("");
+      const items = d.matches.map(m=>`<div><b>${esc(m.name)}</b>　<span class="pill ${bandCls(m.band)}">${esc(m.band)} ${m.score.toFixed(2)}</span>　<span class="pill amber">${esc(m.match_type)}</span></div>`).join("");
       box.innerHTML = `<div class="hit-box">⚠ 命中名单（模拟库 ${d.list_size} 条）${items}
         <div style="margin-top:8px;">处置：${esc(d.action)}</div>
         <button class="btn small" style="margin-top:10px;" onclick="toast('已冻结账户，紧急上报工单已生成（演示）')">执行冻结并生成上报工单</button></div>`;
+    }else if(d.matches.length){
+      const items = d.matches.map(m=>`<div><b>${esc(m.name)}</b>　<span class="pill ${bandCls(m.band)}">${esc(m.band)} ${m.score.toFixed(2)}</span>　<span class="pill amber">${esc(m.match_type)}</span></div>`).join("");
+      box.innerHTML = `<div class="hit-box" style="border-color:#fcd34d;">◐ 未达命中阈值，按「疑似」转人工核验${items}
+        <div style="margin-top:8px;font-size:12px;color:var(--muted);">${esc(d.action)}</div></div>`;
     }else{
-      box.innerHTML = `<div class="miss-box">✔ 未命中名单（模拟库 ${d.list_size} 条）。${esc(d.action)}</div>`;
+      box.innerHTML = `<div class="miss-box">✔ 未命中（模拟库 ${d.list_size} 条，相似度低于疑似阈值 ${d.thresholds.suspect}）。${esc(d.action)}</div>`;
     }
   }catch(e){ box.innerHTML = `<div class="hit-box">筛查失败：${esc(e.message)}</div>`; }
+}
+
+async function runBackScreen(){
+  const box = document.getElementById("backScreenResult");
+  box.innerHTML = '<span class="loading"></span> 回溯筛查中…';
+  try{
+    const d = await jpost("/api/screening/back-screening", {});
+    const hitRows = d.hits.map(h=>`<tr>
+      <td style="font-family:monospace;">${esc(h.case_id)}</td><td>${esc(h.name)}</td>
+      <td><b>${esc(h.matched)}</b></td><td><span class="pill red">${esc(h.score.toFixed(2))}</span></td>
+      <td>${esc(h.match_type)}</td>
+      <td><button class="btn ghost small" onclick="toast('已按名单处置流程生成冻结工单（演示）')">处置</button></td></tr>`).join("");
+    const susRows = d.suspects.map(h=>`<tr>
+      <td style="font-family:monospace;">${esc(h.case_id)}</td><td>${esc(h.name)}</td>
+      <td>${esc(h.matched)}</td><td><span class="pill amber">${esc(h.score.toFixed(2))}</span></td>
+      <td>${esc(h.match_type)}</td><td><span class="pill gray">人工核验</span></td></tr>`).join("");
+    box.innerHTML = `
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;">共筛查 ${d.screened} 个存量主体 → 命中 ${d.hits.length} 个、疑似 ${d.suspects.length} 个（名单库 ${d.list_size} 条，命中阈值 ${d.thresholds.hit}）。</div>
+      ${d.hits.length ? `<table class="grid"><thead><tr><th>案例</th><th>客户/主体</th><th>命中名单项</th><th>分数</th><th>匹配方式</th><th>动作</th></tr></thead><tbody>${hitRows}</tbody></table>` : '<div class="miss-box">无命中项。</div>'}
+      ${d.suspects.length ? `<div style="font-size:12px;color:var(--muted);margin:10px 0 4px;">疑似项（不直接处置，转人工核验）：</div><table class="grid"><tbody>${susRows}</tbody></table>` : ""}
+      <div class="str-note" style="margin-top:8px;">${esc(d.note)} 本次回溯已写入审计链。</div>`;
+  }catch(e){ box.innerHTML = `<div class="hit-box">回溯筛查失败：${esc(e.message)}</div>`; }
 }
 
 /* ================= 大额交易报告 ================= */

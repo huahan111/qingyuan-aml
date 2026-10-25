@@ -20,7 +20,7 @@ from infra.security import is_read_only
 from infra import audit as audit_chain
 from infra import auth as auth_infra
 from services.triage import triage
-from services.screening import screen
+from services.screening import back_screen, screen
 from services.ctr import build_ctr
 from services.rating import rate_case
 from services.similar_cases import similar_for_case
@@ -348,6 +348,23 @@ def screening(q: str = "", request: Request = None):
         if not result["hit"]:
             result["action"] = "未命中（只读演示模式，不记录审计）"
     return result
+
+
+@app.post("/api/screening/back-screening")
+def screening_backfill(request: Request = None):
+    """回溯筛查：名单更新后对存量客户全量复筛（监管检查必看环节，演示实现）。"""
+    conn = db()
+    try:
+        result = back_screen(conn)
+        audit_chain.record(
+            conn, actor=auth_infra.actor_label(request), action="回溯筛查",
+            object_type="screening", object_id="back-screening",
+            detail={"screened": result["screened"], "hits": len(result["hits"]),
+                    "suspects": len(result["suspects"]),
+                    "hit_names": [h["matched"] for h in result["hits"]][:10]})
+        return result
+    finally:
+        conn.close()
 
 
 @app.get("/api/ctr")

@@ -626,6 +626,40 @@ class ContractTest(unittest.TestCase):
         self.assertTrue(m._rate_allow("any", 0))
         m._rate_buckets.clear()
 
+    def test_17_screening_fuzzy(self):
+        """名单筛查 v2：打分制分层（命中/疑似/未命中）+ 别名 + 回溯筛查。"""
+        # 完全一致 → 命中
+        d = CLIENT.get("/api/screening", params={"q": "恐怖组织A"}).json()
+        self.assertTrue(d["hit"])
+        self.assertEqual(d["matches"][0]["score"], 1.0)
+        # 别名一致 → 命中
+        d = CLIENT.get("/api/screening", params={"q": "恐怖组织甲"}).json()
+        self.assertTrue(d["hit"])
+        # 名单主体整体出现在客户名（与 R005 口径一致）→ 命中
+        d = CLIENT.get("/api/screening", params={"q": "恐怖组织A关联人某某"}).json()
+        self.assertTrue(d["hit"])
+        self.assertEqual(d["matches"][0]["score"], 0.95)
+        # 错别字 / 缺前缀 → 疑似（转人工，不直接处置）
+        d = CLIENT.get("/api/screening", params={"q": "某洗钱团伙"}).json()
+        self.assertFalse(d["hit"])
+        self.assertEqual(d["matches"][0]["band"], "疑似")
+        d = CLIENT.get("/api/screening", params={"q": "恐怖组纸A"}).json()
+        self.assertFalse(d["hit"])
+        self.assertTrue(d["matches"])
+        # 普通词片段不再误报命中（v1 子串包含缺陷）
+        d = CLIENT.get("/api/screening", params={"q": "组织"}).json()
+        self.assertFalse(d["hit"])
+        self.assertEqual(d["matches"][0]["score"], 0.7)
+        # 回溯筛查：覆盖演示案例主体，BLOCK-05（名单关联人）命中，且入审计链
+        r = CLIENT.post("/api/screening/back-screening")
+        self.assertEqual(r.status_code, 200)
+        b = r.json()
+        self.assertGreaterEqual(b["screened"], 17)
+        self.assertTrue(any(h["case_id"] == "BLOCK-05" for h in b["hits"]))
+        self.assertIn("thresholds", b)
+        recs = CLIENT.get("/api/audit", params={"action": "回溯筛查"}).json()
+        self.assertGreaterEqual(recs["total"], 1)
+
     def test_11_live_provider_signature(self):
         """Live 模式回归（P0-1）：available/diagnose 与 Mock 同签名，不再必然 500。
 

@@ -25,7 +25,23 @@ sys.path.insert(0, BACKEND)
 from infra import audit  # noqa: E402
 from infra.db import get_db  # noqa: E402
 
-audit.ensure_schema()  # 独立运行时自建审计表（api_contract 场景由 main.py 装配时创建）
+
+def _reset_audit_table():
+    """把副本库的审计链清零（摘触发器→清空→重建），使用例不依赖开发库的历史记录。"""
+    import sqlite3
+    conn = sqlite3.connect(TEST_DB)
+    conn.executescript("""
+        DROP TRIGGER IF EXISTS audit_log_no_update;
+        DROP TRIGGER IF EXISTS audit_log_no_delete;
+        DELETE FROM audit_log;
+    """)
+    conn.commit()
+    conn.close()
+    audit.ensure_schema()
+
+
+audit.ensure_schema()
+_reset_audit_table()
 
 ISO_MS = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}\+08:00$")
 

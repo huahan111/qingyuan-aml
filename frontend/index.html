@@ -103,8 +103,9 @@
 
     <!-- ============ 名单筛查 ============ -->
     <section id="page-screening" class="page">
-      <div class="note-bar warn"><b>红线：</b>名单命中不走 AI，先限制后核验。命中即冻结账户，24 小时内人工复核。</div>
-      <div class="card"><h3>客户与交易对手筛查 <small>当前为模拟名单库，与 R005 共用</small></h3>
+      <div class="note-bar warn"><b>红线：</b>名单命中不走 AI，先限制后核验。命中即冻结账户，24 小时内人工复核。<br>
+        模糊匹配 v2（打分制）：完全一致/别名/名单主体整体出现 → <b>命中</b>；错别字、缺前缀、普通词片段 → <b>疑似（转人工，不直接处置）</b>。演示级实现——未含拼音/音译变体库，生产须接官方匹配引擎；阈值为演示初值。</div>
+      <div class="card"><h3>客户与交易对手筛查 <small>模糊匹配 v2 · 与 R005 共用名单</small></h3>
         <div class="panel-body">
           <div class="screening-row">
             <input id="scanInput" placeholder="输入姓名或主体名称（演示可用下方示例）" onkeydown="if(event.key==='Enter')runScan()">
@@ -113,10 +114,19 @@
           <div class="chips">示例：
             <span class="chip" onclick="fillScan('张某')">张某（未命中）</span>
             <span class="chip" onclick="fillScan('恐怖组织A')">恐怖组织A（命中）</span>
-            <span class="chip" onclick="fillScan('制裁实体B')">制裁实体B（命中）</span>
-            <span class="chip" onclick="fillScan('XX洗钱团伙')">XX洗钱团伙（命中）</span>
+            <span class="chip" onclick="fillScan('恐怖组织甲')">恐怖组织甲（别名命中）</span>
+            <span class="chip" onclick="fillScan('某洗钱团伙')">某洗钱团伙（疑似）</span>
+            <span class="chip" onclick="fillScan('组织')">组织（疑似·不再误报命中）</span>
           </div>
           <div id="scanResult"></div>
+        </div></div>
+      <div class="card" style="margin-top:14px;"><h3>回溯筛查 <small>名单更新后对存量客户全量复筛 · 监管检查必看环节</small></h3>
+        <div class="panel-body">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <button class="btn" onclick="runBackScreen()">对存量客户执行回溯筛查</button>
+            <span style="font-size:12px;color:var(--muted);">覆盖演示案例客户 + 已定性案例库主体；命中项按名单处置流程办理并留痕（入审计链）。</span>
+          </div>
+          <div id="backScreenResult" style="margin-top:12px;"></div>
         </div></div>
     </section>
 
