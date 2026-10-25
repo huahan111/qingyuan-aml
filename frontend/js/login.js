@@ -47,7 +47,7 @@ function showLogin(){
       <div style="display:flex;gap:10px;">
         <button class="btn" style="flex:1;" onclick="doLogin()">登录</button>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:10px;">演示口令：见后端启动日志（README 有说明；生产环境须接机构统一身份认证）。会话 8 小时有效。</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:10px;">口令不在代码里：首次启用鉴权时随机生成，见后端启动日志（或用 QINGYUAN_DEMO_PASSWORD 指定）。生产环境须接机构统一身份认证。会话 8 小时有效。</div>
     </div>`;
   document.body.appendChild(mask);
   document.getElementById("loginPass").addEventListener("keydown", e => { if(e.key === "Enter") doLogin(); });
