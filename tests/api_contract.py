@@ -19,6 +19,8 @@ TEST_DB = os.path.join(TMP.name, "contract.db")
 shutil.copy(SRC_DB, TEST_DB)
 os.environ["QINGYUAN_DB"] = TEST_DB
 os.environ["QINGYUAN_READ_ONLY"] = "0"   # 契约测试含大量写操作（服务默认只读 fail-closed）
+os.environ["QINGYUAN_RATE_LIMIT"] = "0"  # 契约套件高频调用，关闭限流（限流逻辑单独测）
+os.environ["QINGYUAN_RATE_LIMIT_POST"] = "0"
 sys.path.insert(0, BACKEND)
 
 import main  # noqa: E402
@@ -562,6 +564,67 @@ class ContractTest(unittest.TestCase):
         # 非法参数：日期格式错误 → 422
         self.assertEqual(
             CLIENT.get("/api/audit", params={"date_from": "昨天"}).status_code, 422)
+
+    def test_15_rating(self):
+        """客户风险评级：四维模型实时计算、权重守恒、一票升级、升降级判定。"""
+        r = CLIENT.get("/api/rating")
+        self.assertEqual(r.status_code, 200)
+        d = r.json()
+        self.assertEqual(d["count"], 17)
+        order = {"低": 0, "中": 1, "高": 2}
+        for row in d["ratings"]:
+            for k in ("identity", "channel", "geo", "behavior"):
+                self.assertIn(k, row["scores"])
+                self.assertTrue(0 <= row["scores"][k] <= 100)
+            # 权重守恒
+            self.assertAlmostEqual(sum(row["weights"].values()), 1.0)
+            # 总分 = 四维加权（一票升级案例除外：总分仍按加权计算，等级被覆盖）
+            expect = round(sum(row["scores"][k] * w for k, w in row["weights"].items()), 1)
+            self.assertAlmostEqual(row["total"], expect, places=0)
+            self.assertIn(row["computed_level"], ("高", "中", "低"))
+            self.assertIn(row["change"], ("升级", "维持", "下调"))
+            # 升降级方向与等级序一致
+            if row["change"] == "升级":
+                self.assertGreater(order[row["computed_level"]], order[row["preset_level"]])
+            if row["change"] == "下调":
+                self.assertLess(order[row["computed_level"]], order[row["preset_level"]])
+            # 每维都有可解释明细
+            self.assertTrue(all(isinstance(v, list) for v in row["factors"].values()))
+
+        # 一票升级：名单命中 / 身份不明
+        by_id = {x["case_id"]: x for x in d["ratings"]}
+        self.assertEqual(by_id["BLOCK-05"]["computed_level"], "高")  # R005 名单命中
+        self.assertEqual(by_id["BLOCK-08"]["computed_level"], "高")  # R017 身份不明
+        self.assertTrue(any("一票升级" in f[0] for f in by_id["BLOCK-05"]["factors"]["behavior"]))
+        # 拦截类复评不低于中；放行类维持低（PASS-03 新设对公提级属预期）
+        for cid in ("BLOCK-01", "BLOCK-02", "BLOCK-03", "BLOCK-06"):
+            self.assertGreaterEqual(order[by_id[cid]["computed_level"]], order["中"])
+        self.assertEqual(by_id["PASS-01"]["computed_level"], "低")
+        self.assertEqual(by_id["PASS-02"]["computed_level"], "低")
+        # 行为维度含预警回写因子
+        self.assertTrue(any("动态回写" in f[0] for f in by_id["BLOCK-01"]["factors"]["behavior"]))
+
+        # 单案例查询与 404
+        r = CLIENT.get("/api/rating", params={"case_id": "GREY-02"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["count"], 1)
+        self.assertEqual(CLIENT.get("/api/rating", params={"case_id": "NO-SUCH"}).status_code, 404)
+
+    def test_16_rate_limit(self):
+        """限流滑窗：超限拒绝、窗口滑动恢复、limit=0 关闭。直接测判定函数，不依赖真实等待。"""
+        import main as m
+
+        m._rate_buckets.clear()
+        key = "unit-test"
+        for i in range(3):
+            self.assertTrue(m._rate_allow(key, 3), f"第 {i + 1} 次应放行")
+        self.assertFalse(m._rate_allow(key, 3), "第 4 次应拒绝")
+        # 滑动窗口：伪造 61 秒前的时间戳后应恢复放行
+        m._rate_buckets[key][0] -= 61.0
+        self.assertTrue(m._rate_allow(key, 3))
+        # limit=0 恒放行
+        self.assertTrue(m._rate_allow("any", 0))
+        m._rate_buckets.clear()
 
     def test_11_live_provider_signature(self):
         """Live 模式回归（P0-1）：available/diagnose 与 Mock 同签名，不再必然 500。

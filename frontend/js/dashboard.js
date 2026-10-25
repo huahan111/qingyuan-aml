@@ -147,20 +147,58 @@ async function loadCtr(){
   }catch(e){ body.innerHTML = `<div class="hit-box">加载失败：${esc(e.message)}</div>`; }
 }
 
-/* ================= 风险评级 ================= */
-function renderRating(){
+/* ================= 风险评级（四维模型实时计算） ================= */
+let _ratingCache = null;
+async function renderRating(){
   const body = document.getElementById("ratingBody");
-  if(!body || !state.cases.length) return;
+  if(!body) return;
+  if(!_ratingCache){
+    body.innerHTML = '<span class="loading"></span>';
+    try{ _ratingCache = await jget("/api/rating"); }
+    catch(e){ body.innerHTML = `<div class="hit-box">${esc(e.message)}</div>`; return; }
+  }
   const order = {"高":0, "中":1, "低":2};
-  const sorted = state.cases.slice().sort((a,b)=>(order[a.risk_level]??9)-(order[b.risk_level]??9));
-  const rows = sorted.map(c=>{
-    const lvl = c.risk_level || "—";
-    const cls = lvl==="高" ? "red" : lvl==="中" ? "amber" : "green";
-    return `<tr class="clickable" onclick="showPage('workbench');loadCase('${c.case_id}')">
-      <td style="font-family:monospace;">${esc(c.case_id)}</td><td>${esc(c.customer_name)}</td>
-      <td>${esc(c.occupation)}</td><td><span class="pill ${cls}">${esc(lvl)}</span></td></tr>`;
+  const rows = _ratingCache.ratings.slice().sort(
+    (a,b)=>(order[a.computed_level]??9)-(order[b.computed_level]??9) || b.total-a.total);
+  const arrow = c => c==="升级" ? "▲" : c==="下调" ? "▼" : "—";
+  const arrowCls = c => c==="升级" ? "var(--red)" : c==="下调" ? "var(--green)" : "var(--muted)";
+  const lvlCls = l => l==="高" ? "red" : l==="中" ? "amber" : "green";
+  const trs = rows.map(r=>{
+    const dims = r.scores, w = r.weights;
+    const detail = Object.entries({
+      "身份背景 25%": r.factors.identity, "业务渠道 20%": r.factors.channel,
+      "地域风险 20%": r.factors.geo, "行为动态 35%": r.factors.behavior })
+      .map(([dim, items]) => `<div style="margin-top:6px;"><b>${esc(dim)}</b>（${items.length ? "" : "无风险因子"}）
+        ${items.map(f=>`<div style="font-size:11.5px;color:var(--muted);">· ${esc(f[0])} <span style="color:${f[1]>=0?"var(--red)":"var(--green)"};">${f[1]>=0?"+":""}${f[1]}</span></div>`).join("")}</div>`)
+      .join("");
+    return `<tr>
+      <td style="font-family:monospace;">${esc(r.case_id)}</td>
+      <td>${esc(r.customer)}<div style="font-size:11px;color:var(--muted);">${esc(r.occupation)}</div></td>
+      <td style="text-align:center;">${dims.identity}</td>
+      <td style="text-align:center;">${dims.channel}</td>
+      <td style="text-align:center;">${dims.geo}</td>
+      <td style="text-align:center;"><b>${dims.behavior}</b></td>
+      <td style="text-align:center;"><b>${r.total}</b></td>
+      <td>${esc(r.preset_level)} <span style="color:${arrowCls(r.change)};">${arrow(r.change)}</span> <span class="pill ${lvlCls(r.computed_level)}">${esc(r.computed_level)}</span>
+        ${r.edd ? '<span class="pill red" style="margin-left:4px;">触发 EDD</span>' : ""}</td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+        <details class="rule-detail"><summary>明细</summary>${detail}</details></td>
+    </tr>`;
   }).join("");
-  body.innerHTML = `<table class="grid"><thead><tr><th>案例</th><th>客户</th><th>职业/行业</th><th>风险等级</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const dist = {"高":0,"中":0,"低":0};
+  rows.forEach(r=>dist[r.computed_level]++);
+  const changed = rows.filter(r=>r.change!=="维持").length;
+  body.innerHTML = `
+    <div class="stat-grid" style="margin-bottom:10px;">
+      <div class="stat"><div class="lbl">复评 高风险</div><div class="num">${dist["高"]}<small> 户</small></div></div>
+      <div class="stat"><div class="lbl">复评 中风险</div><div class="num">${dist["中"]}<small> 户</small></div></div>
+      <div class="stat"><div class="lbl">复评 低风险</div><div class="num">${dist["低"]}<small> 户</small></div></div>
+      <div class="stat"><div class="lbl">较存量评级变动</div><div class="num">${changed}<small> 户</small></div></div>
+    </div>
+    <div style="overflow-x:auto;"><table class="grid"><thead><tr>
+      <th>案例</th><th>客户</th><th title="身份背景 25%">身份</th><th title="业务渠道 20%">渠道</th>
+      <th title="地域风险 20%">地域</th><th title="行为动态 35%（预警回写）">行为</th><th>总分</th>
+      <th>存量 → 复评</th><th>加分明细</th></tr></thead><tbody>${trs}</tbody></table></div>`;
 }
 
 /* ================= 规则配置 ================= */

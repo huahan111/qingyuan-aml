@@ -194,13 +194,15 @@
 
     <!-- ============ 风险评级 ============ -->
     <section id="page-rating" class="page">
-      <div class="note-bar static">静态展示页：评级模型为示例口径，未接后端评分引擎；客户风险等级取自演示数据集。</div>
+      <div class="note-bar">四维评级模型<b>实时计算</b>（身份背景 25% ＋ 业务渠道 20% ＋ 地域风险 20% ＋ 行为动态 35%，PRD §4.7 口径）：行为维度由本期预警结果动态回写，名单命中/身份不明一票升级为高；复评结果与存量评级对比给出升降级，上调至高风险触发 EDD 提示。权重与阈值为演示初值（非监管标准），每项分数可展开逐条加分明细核对。</div>
       <div class="two-col">
-        <div class="card"><h3>客户风险等级分布</h3><div class="panel-body" id="ratingBody"><span class="loading"></span></div></div>
-        <div class="card"><h3>评级因素（示例）</h3><div class="panel-body" style="font-size:12.5px;line-height:1.9;">
-          <p><b>客户维度：</b>职业/行业、国籍与地区、开户方式、受益所有人透明度、PEP 身份。</p>
-          <p style="margin-top:8px;"><b>业务维度：</b>账户类型、跨境暴露、现金使用比例、非面对面渠道占比。</p>
-          <p style="margin-top:8px;"><b>行为维度：</b>交易频率与金额偏离度、对手方地域分散度、历史预警与排除记录。</p>
+        <div class="card"><h3>客户风险复评 <small>四维打分 · 逐户明细</small></h3><div class="panel-body" id="ratingBody"><span class="loading"></span></div></div>
+        <div class="card"><h3>评级维度与因子</h3><div class="panel-body" style="font-size:12.5px;line-height:1.9;">
+          <p><b>身份背景（25%）：</b>对公成立年限、职业/行业敏感度、行为突变、无社保记录、新开户/新设主体、收入与规模不符；已核实的真实经营证据（合同/发票/代发）反向对冲。</p>
+          <p style="margin-top:8px;"><b>业务渠道（20%）：</b>现金类渠道占比、交易渠道分散度、第三方支付占比。</p>
+          <p style="margin-top:8px;"><b>地域风险（20%）：</b>跨境/外币交易占比（演示口径的代理指标；生产应接入高风险地区清单）。</p>
+          <p style="margin-top:8px;"><b>行为动态（35%）：</b>夜间交易、现金占比、对手方分散度、快进快出、整数金额、虚拟货币/OTC 特征、<b>本期规则命中数（预警回写）</b>。</p>
+          <p style="margin-top:8px;"><b>刚性规则：</b>名单命中（R005）/客户身份不明（R017）一票升级为高风险，不受分值影响。</p>
           <p style="margin-top:10px;color:var(--muted);">评级结果决定 CDD 强度与持续监测频率，不直接等同于可疑结论。</p>
         </div></div>
       </div>

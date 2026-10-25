@@ -17,6 +17,8 @@
 统一取上海，不再一处一编。
 """
 import hashlib
+import json
+import os
 from datetime import date, datetime
 from itertools import count
 
@@ -27,7 +29,21 @@ from .text import build_text
 
 _REPORT_SEQ = count(1)
 
+# IN_KW 与规则引擎 common.py 的 IN_TYPES 同源（方向口径一致）；
+# 报告取值侧仅用于正文组织，不再单独维护方向词表。
 IN_KW = ("收入", "存入", "转入", "入账")
+
+# 官方代码集（部分）：3 号令附件公开口径，经 PRD §4.8 转录，见 data/code_sets.json。
+# 报告中的代码类字段一律查表取值（单一数据源）；第 24 项特征代码官方未公开，不收录。
+_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data")
+with open(os.path.join(_DATA_DIR, "code_sets.json"), encoding="utf-8") as _f:
+    CODE_SETS = json.load(_f)
+
+
+def _code(table: str, code: str) -> str:
+    """按代码表取「编号 + 名称」的展示值；表或编号缺失时如实返回编号本身。"""
+    label = CODE_SETS.get(table, {}).get("codes", {}).get(code)
+    return f"{code} {label}" if label else code
 
 # 演示机构所在地（与第 1 项报告机构编码 31=上海 保持一致）
 DEMO_CITY = "上海"
@@ -140,10 +156,10 @@ def build_report(case, diagnosis, rule_hits, conn, report_date=None, diagnosis_o
         8: (occupation, "system"),
         9: (f"138****{_digits(cid + '-tel')}；{city}市××路××号（合成）", "synthetic"),
         16: ("中国", "system"),
-        17: ("01 非特别紧急", "system"),
+        17: (_code("urgency", "01"), "system"),
         18: ("1（初次报告）", "system"),
-        19: ("01 报告中国反洗钱监测分析中心", "system"),
-        20: ("01 模型筛选", "system"),
+        19: (_code("direction", "01"), "system"),
+        20: (_code("trigger_point", "01"), "system"),
         21: (f"{start} 至 {end}，共 {len(txs)} 笔交易，累计转入/存入 {_fmt(in_total)} 元、"
              f"转出/支取 {_fmt(out_total)} 元，主要交易对手为 {top_cp}，"
              f"渠道涉及 {'、'.join(channels) or '—'}。"

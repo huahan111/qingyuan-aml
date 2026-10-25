@@ -137,7 +137,7 @@ python -m playwright install chromium
 python3 tests/case_similarity.py      # 相似案例召回，6/6
 python3 tests/case_linkage.py         # 案例库与规则库联动，7/7
 python3 tests/audit_chain.py          # 审计防篡改链，7/7
-python3 tests/api_contract.py         # API 契约，16/16
+python3 tests/api_contract.py         # API 契约，18/18
 python3 tests/e2e_smoke.py            # 浏览器端到端，26/26
 python3 tests/auth_state_machine.py   # 授权状态机，31/31
 python3 tests/run_all.py              # 依次运行以上六项
@@ -149,7 +149,7 @@ python3 tests/run_all.py              # 依次运行以上六项
 - 相似案例测试校验：自身排除、排序、分档、已知相似对；阈值来自 `backend/data/case_similarity.json`，不是监管统一标准。
 - 案例联动测试校验：报送后自动沉淀、人工排除负样本、幂等、合并替换、覆盖矩阵、规则有效性、历史回填。
 - 审计链测试校验：哈希链衔接、服务器毫秒时间戳、触发器拦截改删、**绕过触发器直接改库后全链重放仍能检出**、只读模式跳过记录、检索过滤。
-- 契约测试另含报送加固回归：服务端回执号（RX-日期-序号）、按报告编号幂等、类型混淆 422、supersedes 越权拦截、更正闭环、CDD 信用代码校验、审计隐私红线（证件号只记掩码）。
+- 契约测试另含报送加固回归（服务端回执号/幂等/类型混淆 422/supersedes 越权拦截/更正闭环）、**风险评级回归**（权重守恒、一票升级、升降级方向、放行类维持低风险）与限流滑窗判定。
 - 规则与报告回归：`python3 backend/scripts/test_regression.py`，22/22（含要素 JSON 与规则参数字典完整性校验）。
 
 > 演示环境模拟授权动作；真实系统应由指纹仪、人脸识别或统一身份认证返回授权结果，不接受手工点选。
@@ -260,6 +260,8 @@ QCC_API_KEY=xxxx    # 企查查开放平台 Key（未配置时页面显示"未�
 | `POST /api/report/{id}` | 生成 STR 初稿：62 项官方要素 + 中英双语正文 |
 | `GET /api/screening?q=` | 名单筛查（模拟名单库，命中不经 AI） |
 | `GET /api/ctr` | 大额交易逐日累计（3 号令阈值） |
+| `GET /api/rating` | 客户风险评级：四维模型实时计算（身份25%+渠道20%+地域20%+行为35%，预警回写，名单/身份不明一票升级，升降级与 EDD） |
+| `GET /api/code-sets` | STR 官方代码集（部分）：3 号令附件公开四表（紧急程度/报送方向/触发点等），第 24 项特征代码未公开、如实标注未收录 |
 | `POST /api/submissions` | 写入上报台账（**回执号服务端生成 RX-日期-序号；按报告编号幂等**；三级签字齐全性校验；supersedes 三重校验） |
 | `GET /api/submissions` | 上报台账列表 |
 | `GET /api/submissions/{id}` | 单条上报记录详情（含报告快照与签字） |

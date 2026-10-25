@@ -5,6 +5,8 @@
 """
 import json
 import os
+import time
+from collections import deque
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -12,13 +14,14 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from domain.rules import RULE_FUNCS, run_engine
 from ai_diagnosis import AiUnavailableError, get_provider, LiveProvider
-from case_store import dataset_meta, list_cases as demo_list_cases, get_case as demo_get_case
+from case_store import dataset_meta, load_dataset, list_cases as demo_list_cases, get_case as demo_get_case
 from infra.db import ensure_case_library_schema, ensure_submissions_table, get_db
 from infra.security import is_read_only
 from infra import audit as audit_chain
 from services.triage import triage
 from services.screening import screen
 from services.ctr import build_ctr
+from services.rating import rate_case
 from services.similar_cases import similar_for_case
 from api.reports import router as reports_router
 from api.submissions import router as submissions_router
@@ -72,6 +75,42 @@ if _CORS_ORIGINS:
 # 研判 / 报告生成接口（公开演示可看不可写）。新增写接口默认即被拦截（fail-closed），
 # 不再依赖事后往黑名单里补路径。
 _READ_ONLY_ALLOWED_PREFIX = ("/api/diagnose/", "/api/report/", "/api/cdd/")
+
+# ---------------- 限流（安全探测中-3 收口） ----------------
+# 演示环境无鉴权，此前接口可被无限速调用（案例库可无限灌入）。单 worker 内存滑窗
+# 即可；生产部署应换 API 网关或反向代理层限流。设 0 关闭。
+_RATE_WINDOW = 60.0
+_RATE_MAX = int(os.getenv("QINGYUAN_RATE_LIMIT", "240"))        # 每 IP 每窗口 /api 总量
+_RATE_MAX_WRITE = int(os.getenv("QINGYUAN_RATE_LIMIT_POST", "60"))  # 每 IP 每窗口写请求量
+_rate_buckets: dict = {}
+
+
+def _rate_allow(key: str, limit: int) -> bool:
+    if limit <= 0:
+        return True
+    now = time.monotonic()
+    q = _rate_buckets.setdefault(key, deque())
+    while q and now - q[0] > _RATE_WINDOW:
+        q.popleft()
+    if len(q) >= limit:
+        return False
+    q.append(now)
+    return True
+
+
+@app.middleware("http")
+async def rate_limit_guard(request, call_next):
+    if not request.url.path.startswith("/api"):
+        return await call_next(request)   # 静态资源与页面加载不限
+    ip = request.client.host if request.client else "unknown"
+    ok = _rate_allow(f"t:{ip}", _RATE_MAX)
+    if ok and request.method not in ("GET", "HEAD", "OPTIONS"):
+        ok = _rate_allow(f"w:{ip}", _RATE_MAX_WRITE)
+    if not ok:
+        return JSONResponse(
+            {"detail": "请求过于频繁，已触发限流保护，请稍后再试"},
+            status_code=429, headers={"Retry-After": "10"})
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -299,6 +338,33 @@ def ctr():
     return build_ctr()
 
 
+@app.get("/api/rating")
+def rating(case_id: str = ""):
+    """客户风险评级：四维模型（身份25%+渠道20%+地域20%+行为35%）实时计算。
+
+    行为维度由预警结果动态回写；名单命中/身份不明一票升级。实现见 services/rating.py。
+    """
+    cases = load_dataset().get("cases", [])
+    if case_id:
+        cases = [c for c in cases if c.get("case_id") == case_id]
+        if not cases:
+            raise HTTPException(404, f"案例 {case_id} 不存在")
+    rows = [rate_case(c) for c in cases]
+    return {"count": len(rows), "ratings": rows,
+            "note": "权重与阈值为演示初值（非监管标准）；地域维度以跨境/外币为代理指标；"
+                    "每项分数附逐条加分明细，可展开核对。"}
+
+
+@app.get("/api/code-sets")
+def code_sets():
+    """STR 报告官方代码集（部分）：3 号令附件公开口径四表。
+
+    第 24 项特征代码/第 23 项涉罪类型的官方代码集未公开，如实标注未收录。
+    """
+    from domain.report.builder import CODE_SETS
+    return CODE_SETS
+
+
 @app.get("/api/regulations")
 def list_regulations():
     conn = db()
@@ -313,7 +379,12 @@ def list_regulations():
 
 
 # 前端静态文件（单文件应用）
+# 兼容 /index.html、/index.htm、/home 等旧链接入口：老 Demo 是静态站，
+# 浏览器书签/平台卡片常带 /index.html，直接落到 FastAPI 会 404。
 @app.get("/")
+@app.get("/index.html")
+@app.get("/index.htm")
+@app.get("/home")
 def index():
     return FileResponse(os.path.join(FRONTEND_DIR, "index.html"),
                         headers={"Cache-Control": "no-store, max-age=0"})
