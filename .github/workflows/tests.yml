@@ -1,0 +1,32 @@
+name: tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 安装依赖
+        run: |
+          pip install -r requirements.txt -r requirements-dev.txt
+          python -m playwright install --with-deps chromium
+      - name: 初始化数据库（法规/规则/演示数据）
+        run: |
+          python3 backend/scripts/init_db.py
+          python3 backend/scripts/import_regulations_existing.py
+          python3 backend/scripts/import_regulations_new.py
+          python3 backend/scripts/import_regulations_extra.py
+          python3 backend/scripts/build_rules.py
+          python3 backend/scripts/build_cases.py
+          python3 backend/scripts/build_mock_diagnosis.py
+      - name: 全量测试（七套件）
+        run: python3 tests/run_all.py
+      - name: 规则阈值回测（最小实证）
+        run: python3 backend/scripts/rule_backtest.py

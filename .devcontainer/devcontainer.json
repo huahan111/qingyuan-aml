@@ -1,0 +1,13 @@
+{
+  "name": "qingyuan-aml",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": {"label": "清源AML 演示", "onAutoForward": "openPreview"}
+  },
+  "postCreateCommand": "pip install -r requirements.txt -r requirements-dev.txt && python -m playwright install --with-deps chromium && python3 backend/scripts/init_db.py && python3 backend/scripts/import_regulations_existing.py && python3 backend/scripts/import_regulations_new.py && python3 backend/scripts/import_regulations_extra.py && python3 backend/scripts/build_rules.py && python3 backend/scripts/build_cases.py && python3 backend/scripts/build_mock_diagnosis.py",
+  "remoteEnv": {
+    "QINGYUAN_READ_ONLY": "0",
+    "QINGYUAN_HOST": "127.0.0.1"
+  }
+}

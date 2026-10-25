@@ -1,7 +1,12 @@
 # 清源AML · 反洗钱智能监测平台 MVP
 
+[![tests](https://github.com/huahan111/qingyuan-aml/actions/workflows/tests.yml/badge.svg)](https://github.com/huahan111/qingyuan-aml/actions/workflows/tests.yml)
+[![Open in Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/huahan111/qingyuan-aml?devcontainer_path=.devcontainer/devcontainer.json)
+
 > 每一条交易研判结论，都可溯源到法规条文。
 > 演示系统 · 所有数据均为脱敏合成 · 仅供学习交流
+
+**[▶ 在线只读演示（无需登录）](https://qingyuan-aml-demo.app.workbuddy.host/)** ｜ 规则引擎 · 62 项 STR 要素 · 三级授权 · 防篡改审计链 · 名单模糊匹配与回溯筛查 ｜ English: [README_EN.md](README_EN.md)
 
 ## 系统架构
 
@@ -37,6 +42,8 @@ python3 backend/scripts/reset_demo.py --yes   # 重置上报台账与已定性�
 python3 backend/main.py                       # 直启：默认只读 + 0.0.0.0，读取平台注入的 PORT
                                               #（容器 / 托管平台用；fail-closed，公开实例不可写）
 ```
+
+没有本地环境？点顶部 **Open in Codespaces** 按钮，云端容器会自动装依赖并建库，然后执行 `./run.sh`，在转发端口 8000 直接用。
 
 > 页面右上角也有「重置演示数据」按钮，适合连续给不同人演示前清场。直启/容器默认只读（写接口全部 403）；`run.sh` 为本机交互演示默认可写，如需本机只读：`QINGYUAN_READ_ONLY=1 ./run.sh`。
 
@@ -150,6 +157,12 @@ AML_MODEL=deepseek-chat python3 backend/scripts/eval_ai.py --mode constrained
 ```
 
 评测集入库为 `backend/data/eval_set_v0.1.json`（xlsx 原样转录，含每条的期望结论/类型/陷阱标注）；输出按例明细与汇总（类型归属率/结论方向/正常样例误报数）。
+
+## 规则阈值回测（最小实证）与容量口径
+
+**回测**：`python3 backend/scripts/rule_backtest.py` 生成 [docs/rule_backtest_report.md](docs/rule_backtest_report.md)——在 17 条已标注演示集上：引擎命中与标注逐条一致、拦截类案例规则命中 8/8、放行类零误命中 3/3，10 条可执行规则均有命中案例（含 1 例设计性的"命中-排除"）。**这是可复算的基线，不是统计结论**（样本 17 条、自建标注）；生产环境用本机构已定性案例重跑同一脚本。
+
+**容量与性能口径（诚实声明）**：单 worker + SQLite，定位是演示与单机构小范围（≤10 人、案例库千级记录）场景；规则引擎对单个客户的交易序列做线性扫描（O(n)），研判为同步计算，未做压测。同步端点在线程池中并发执行，多人同时报送存在 SQLite 写锁与审计序号竞态——内部试用前需先做数据层加固（WAL + 写串行，或迁移 PostgreSQL，PRD §10.14 有评估）；生产规模（日均十万笔级）需换 PG + 批处理架构。
 
 ## 报告核对口径
 
