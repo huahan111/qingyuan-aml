@@ -23,11 +23,11 @@ function esc(s){
   // 单引号也须转义：大量 onclick 属性用单引号包插值，漏掉即成注入点
   return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
-async function jget(url){ const r = await fetch(url); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+async function jget(url){ const r = await fetch(url); if(r.status===401){ showLogin(); } if(!r.ok) throw new Error(await r.text()); return r.json(); }
 async function jpost(url, body){
-  const opt = {method:"POST"};
-  if(body !== undefined){ opt.headers = {"Content-Type":"application/json"}; opt.body = JSON.stringify(body); }
-  const r = await fetch(url, opt); if(!r.ok) throw new Error(await r.text()); return r.json();
+  const opt = {method: "POST"};
+  if(body !== undefined){ opt.headers = {"Content-Type": "application/json"}; opt.body = JSON.stringify(body); }
+  const r = await fetch(url, opt); if(r.status===401){ showLogin(); } if(!r.ok) throw new Error(await r.text()); return r.json();
 }
 function fmtAmt(n){ return "¥" + Number(n).toLocaleString("zh-CN", {maximumFractionDigits: 2}); }
 

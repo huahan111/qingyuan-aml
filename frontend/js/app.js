@@ -1,5 +1,7 @@
-/* 应用初始化：加载案例/规则/法规后渲染工作台 */
+/* 应用初始化：鉴权状态下先确认登录，再加载案例/规则/法规渲染工作台 */
 async function init(){
+  await refreshAuthStatus();
+  if(AUTH_STATE.required && !AUTH_STATE.user) return; // 未登录：登录层已弹出，登录成功后会重跑 init
   try{
     const h = await jget("/api/health");
     state.readOnly = !!h.read_only;

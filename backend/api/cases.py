@@ -1,8 +1,9 @@
 """案例相关路由：相似案例召回、新交易接入、人工结论沉淀。"""
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 
 from case_store import get_case
 from infra import audit as audit_chain
+from infra import auth
 from infra.db import get_db
 from services.case_linkage import record_disposition
 from services.intake import IntakeValidationError, screen_new_case
@@ -24,7 +25,7 @@ def similar_cases(case_id: str, top_k: int = Query(3, ge=1, le=10)):
 
 
 @router.post("/intake")
-def intake(payload: dict = Body(...)):
+def intake(payload: dict = Body(...), user=Depends(auth.require_role("operator"))):
     conn = get_db()
     try:
         return screen_new_case(payload, conn)
@@ -35,7 +36,8 @@ def intake(payload: dict = Body(...)):
 
 
 @router.post("/case-library/disposition")
-def disposition(payload: dict = Body(...)):
+def disposition(payload: dict = Body(...), request: Request = None,
+                user=Depends(auth.require_role("operator"))):
     case_id = payload.get("case_id")
     if not case_id:
         raise HTTPException(422, "缺少 case_id")
@@ -48,7 +50,8 @@ def disposition(payload: dict = Body(...)):
             conn, case, payload.get("conclusion", "放行"),
             payload.get("reason", ""), payload.get("operator", ""))
         audit_chain.record(
-            conn, actor=payload.get("operator") or "未署名", action="人工定性",
+            conn, actor=auth.actor_label(request, payload.get("operator") or "未署名"),
+            action="人工定性",
             object_type="library_case", object_id=result.get("library_case_id", case_id),
             detail={"case_id": case_id, "conclusion": payload.get("conclusion", ""),
                     "reason": (payload.get("reason") or "")[:200]})

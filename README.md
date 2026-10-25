@@ -117,6 +117,20 @@ python3 backend/main.py                       # 直启：默认只读 + 0.0.0.0�
 
 > 为什么不用区块链：单机构内的审计防篡改，行业实践是 append-only + 哈希链 + 权限隔离（+ 生产环境的 HMAC 签名与外部锚定）；联盟链用于跨机构互信场景，在这里是过度设计。
 
+## 登录鉴权（可选 · 内部试用形态）
+
+默认关闭（公开只读演示 / 本机演示不登录，行为与既往一致）。设 `QINGYUAN_AUTH=1` 开启后：
+
+- **三角色账号**（`backend/data/users.json`，口令仅存 SHA-256 摘要）：`jingban` 经办 · `fuhe` 复核 · `shenpi` 审批，演示口令 `见后端启动日志`（登录页有提示）；
+- **会话**：HMAC-SHA256 签名 Cookie（HttpOnly + SameSite=Lax，8 小时有效），密钥 `QINGYUAN_SESSION_SECRET` 或进程内随机；
+- **未登录 401**：`/api/*`（health / auth 豁免），前端自动弹登录层；
+- **写接口角色校验**：报送写入/人工定性/历史回填/新交易接入＝经办；演示重置＝审批；角色不符 403（中文提示当前登录角色）；
+- **谁登录谁签字**：三级授权中只能签署本人角色对应的那一级，签字身份取登录会话而非演示字典；
+- **审计链实名**：操作人从「演示用户（未鉴权）」变为「姓名（工号）」，金融审计三环（身份可信 + 内容完整 + 不可篡改）就此闭合；
+- 与只读模式可并存（只读白名单含 `/api/auth/`：公开只读实例也能登录，但业务写入仍 403）。
+
+边界：这是演示级实现（单 worker、签名 Cookie、演示口令）；生产必须接机构统一身份认证（4A/AD）+ 硬件令牌，口令策略与锁定由统一认证承担。
+
 ## 报告核对口径
 
 打开报告时的核对区做三件事：
@@ -137,10 +151,11 @@ python -m playwright install chromium
 python3 tests/case_similarity.py      # 相似案例召回，6/6
 python3 tests/case_linkage.py         # 案例库与规则库联动，7/7
 python3 tests/audit_chain.py          # 审计防篡改链，7/7
+python3 tests/auth.py                 # 登录鉴权（QINGYUAN_AUTH=1），6/6
 python3 tests/api_contract.py         # API 契约，18/18
 python3 tests/e2e_smoke.py            # 浏览器端到端，26/26
 python3 tests/auth_state_machine.py   # 授权状态机，31/31
-python3 tests/run_all.py              # 依次运行以上六项
+python3 tests/run_all.py              # 依次运行以上七项
 ```
 
 - API 契约测试在临时数据库副本上运行，不会污染 `backend/data/qingyuan.db`。
@@ -267,6 +282,7 @@ QCC_API_KEY=xxxx    # 企查查开放平台 Key（未配置时页面显示"未�
 | `GET /api/submissions/{id}` | 单条上报记录详情（含报告快照与签字） |
 | `GET /api/audit` | 审计链检索（操作人/动作/对象/日期过滤，分页） |
 | `GET /api/audit/verify` | 审计链全链重放校验（逐条重算 SHA256 并核对链接） |
+| `POST /api/auth/login` / `POST /api/auth/logout` / `GET /api/auth/me` | 登录鉴权（QINGYUAN_AUTH=1 时；三角色，会话 Cookie，审计实名） |
 | `GET /api/trace/{id}` | 溯源链（规则→法规条款原文→官方类型→处罚事由） |
 | `GET /api/clauses/{id}` | 法规条款原文 |
 | `GET /api/rules` | 规则库（17 条定义，10 条可执行＝R001–R009+R017，R010–R016 规划中；executable 以后端注册表为准） |

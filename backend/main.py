@@ -7,7 +7,7 @@ import json
 import os
 import time
 from collections import deque
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -18,6 +18,7 @@ from case_store import dataset_meta, load_dataset, list_cases as demo_list_cases
 from infra.db import ensure_case_library_schema, ensure_submissions_table, get_db
 from infra.security import is_read_only
 from infra import audit as audit_chain
+from infra import auth as auth_infra
 from services.triage import triage
 from services.screening import screen
 from services.ctr import build_ctr
@@ -30,6 +31,7 @@ from api.linkage import router as linkage_router
 from api.admin import router as admin_router
 from api.cdd import router as cdd_router
 from api.audit import router as audit_router
+from api.auth import router as auth_router
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -72,9 +74,9 @@ if _CORS_ORIGINS:
                        allow_methods=["*"], allow_headers=["*"])
 
 # 只读模式：非 GET/HEAD/OPTIONS 请求默认全部拒绝，仅放行"只计算、不落库"的
-# 研判 / 报告生成接口（公开演示可看不可写）。新增写接口默认即被拦截（fail-closed），
-# 不再依赖事后往黑名单里补路径。
-_READ_ONLY_ALLOWED_PREFIX = ("/api/diagnose/", "/api/report/", "/api/cdd/")
+# 研判 / 报告生成 / CDD / 登录鉴权接口（公开演示可看可登录，但不可写业务数据）。
+# 新增写接口默认即被拦截（fail-closed），不再依赖事后往黑名单里补路径。
+_READ_ONLY_ALLOWED_PREFIX = ("/api/diagnose/", "/api/report/", "/api/cdd/", "/api/auth/")
 
 # ---------------- 限流（安全探测中-3 收口） ----------------
 # 演示环境无鉴权，此前接口可被无限速调用（案例库可无限灌入）。单 worker 内存滑窗
@@ -121,6 +123,19 @@ async def read_only_guard(request, call_next):
     return await call_next(request)
 
 
+# 鉴权模式（QINGYUAN_AUTH=1，内部试用形态）：/api 未登录 401（health/login 豁免）。
+# 公开只读演示与本机演示不开启，行为与既往完全一致。
+@app.middleware("http")
+async def auth_guard(request, call_next):
+    if (auth_infra.is_auth_enabled()
+            and request.url.path.startswith("/api")
+            and not request.url.path.startswith(auth_infra.EXEMPT_PREFIXES)
+            and request.method != "OPTIONS"
+            and not auth_infra.get_user(request)):
+        return JSONResponse({"detail": "未登录或会话已过期，请先登录"}, status_code=401)
+    return await call_next(request)
+
+
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 app.include_router(reports_router)
 app.include_router(submissions_router)
@@ -129,6 +144,7 @@ app.include_router(linkage_router)
 app.include_router(admin_router)
 app.include_router(cdd_router)
 app.include_router(audit_router)
+app.include_router(auth_router)
 
 
 def db():
@@ -148,6 +164,7 @@ def health():
     meta = dataset_meta()
     return {"status": "ok", "ai_provider": getattr(provider, "name", "mock"),
             "live_available": LiveProvider().available(), "read_only": is_read_only(),
+            "auth_required": auth_infra.is_auth_enabled(),
             "dataset": meta}
 
 
@@ -169,7 +186,7 @@ def list_cases():
 
 
 @app.get("/api/cases/{case_id}")
-def get_case(case_id: str):
+def get_case(case_id: str, request: Request = None):
     case = demo_get_case(case_id)
     if not case:
         # 演示 JSON 里没有 → 再查已定性案例库（LIB- / DIS- 条目可查看详情）
@@ -186,8 +203,9 @@ def get_case(case_id: str):
     if case.get("source") and case["source"] != "demo":
         conn = db()
         try:
-            audit_chain.record(conn, actor="演示用户（未鉴权）", action="案例库查看",
-                               object_type="library_case", object_id=case_id)
+            audit_chain.record(
+                conn, actor=auth_infra.actor_label(request), action="案例库查看",
+                object_type="library_case", object_id=case_id)
         finally:
             conn.close()
     return case
@@ -305,17 +323,17 @@ def list_rules():
 
 
 @app.get("/api/screening")
-def screening(q: str = ""):
+def screening(q: str = "", request: Request = None):
     """名单筛查：命中不走 AI，先限制后核验。实现见 services/screening.py。"""
     try:
         result = screen(q)
     except ValueError as e:
         raise HTTPException(400, str(e))
-    # 筛查行为留痕（只读演示模式下不记录，保持库不可变）
+    # 筛查行为留痕（只读演示模式下不记录，保持库不可变）；操作人为登录实名或如实标注未鉴权
     conn = db()
     try:
         rec = audit_chain.record(
-            conn, actor="演示用户（未鉴权）", action="名单筛查",
+            conn, actor=auth_infra.actor_label(request), action="名单筛查",
             object_type="screening", object_id=(q or "")[:80],
             detail={"hit": result.get("hit", False),
                     "matches": [m.get("name", "") for m in result.get("matches", [])]})

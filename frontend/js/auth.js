@@ -119,6 +119,12 @@ function renderSignRoles(){
       return `<div class="role-card locked"><h4>${i+1}. ${r.title}岗 <span class="pill gray">等待上一级</span></h4>
         <div class="kvline">请先完成${SIGN_ROLES[i-1].title}岗授权。</div></div>`;
     }
+    // 鉴权模式：非本角色登录时锁定本级签字入口
+    if(AUTH_STATE.required && (!AUTH_STATE.user || AUTH_STATE.user.role !== r.key)){
+      const cur = AUTH_STATE.user ? `当前登录：${AUTH_STATE.user.role_name} · ${AUTH_STATE.user.name}` : "当前未登录";
+      return `<div class="role-card locked"><h4>${i+1}. ${r.title}岗 <span class="pill gray">需${r.title}角色登录</span></h4>
+        <div class="kvline">鉴权模式下谁登录谁签字——${cur}。请退出后以「${r.title}」角色账号登录再签本级。</div></div>`;
+    }
     if(state.authPending && state.authPending.key === r.key){
       return bioCard(r, channel);
     }
@@ -230,8 +236,19 @@ function recordSignature(key, method, meta){
   if(idx < 0) return;
   if(idx > 0 && !state.signatures[SIGN_ROLES[idx-1].key]){ toast("请先完成上一级授权"); return; }
   const r = SIGN_ROLES[idx];
+  // 鉴权模式：谁登录谁签字——只能签本人角色对应的那一级，身份取登录会话而非演示字典
+  let who = r;
+  if(AUTH_STATE.required){
+    const u = AUTH_STATE.user;
+    if(!u){ toast("鉴权模式：请先登录再签字"); showLogin(); return; }
+    if(u.role !== key){
+      toast(`本级为「${r.title}」签字，需以 ${r.title} 角色账号登录（当前登录：${u.role_name} · ${u.name}）`);
+      return;
+    }
+    who = {name: u.name, id: u.id, post: u.post, title: u.role_name};
+  }
   state.signatures[key] = {
-    name:r.name, id:r.id, post:r.post, method,
+    name:who.name, id:who.id, post:who.post, method,
     channel:(AUTH_CHANNELS.find(c=>c.key===(meta||{}).channel)||{}).name || "",
     device:(meta||{}).device || "", score:(meta||{}).score || "",
     time: isoNow()

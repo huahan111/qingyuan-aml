@@ -13,6 +13,7 @@ SCRIPTS = (
     ("tests/case_similarity.py", False),
     ("tests/case_linkage.py", False),
     ("tests/audit_chain.py", False),
+    ("tests/auth.py", False),
     ("tests/api_contract.py", False),
     ("tests/e2e_smoke.py", True),          # 需要 playwright + chromium
     ("tests/auth_state_machine.py", True),  # 需要 playwright + chromium
@@ -36,6 +37,6 @@ for script, needs_browser in SCRIPTS:
     if r.returncode != 0:
         sys.exit(r.returncode)
 
-print("\n全部测试通过：相似案例 + 案例联动 + 审计链 + API 契约 + E2E + 授权状态机")
+print("\n全部测试通过：相似案例 + 案例联动 + 审计链 + 鉴权 + API 契约 + E2E + 授权状态机")
 if skipped:
     print(f"（本次跳过浏览器测试 {len(skipped)} 项：{'、'.join(skipped)}）")

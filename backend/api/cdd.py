@@ -3,9 +3,10 @@
 只做查询，不落库、不存储证件号；未配置外部数据源时如实返回"未接入"，
 不会用模拟结果冒充真实核查。查询行为写入审计链（证件号只记掩码）。
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from infra import audit as audit_chain
+from infra import auth
 from infra.db import get_db
 from services import cdd
 
@@ -26,7 +27,7 @@ def cdd_info():
 
 
 @router.post("/api/cdd/enterprise")
-def cdd_enterprise(payload: dict):
+def cdd_enterprise(payload: dict, request: Request = None):
     name = str(payload.get("name") or "").strip()
     uscc = str(payload.get("uscc") or "").strip()
     provider = str(payload.get("provider") or "mock-enterprise")
@@ -39,7 +40,7 @@ def cdd_enterprise(payload: dict):
     conn = get_db()
     try:
         audit_chain.record(
-            conn, actor="演示用户（未鉴权）", action="CDD对公尽调",
+            conn, actor=auth.actor_label(request), action="CDD对公尽调",
             object_type="cdd_enterprise", object_id=(name or uscc)[:80],
             detail={"provider": provider, "found": result.get("found", False),
                     "uscc": uscc[:18]})
@@ -49,7 +50,7 @@ def cdd_enterprise(payload: dict):
 
 
 @router.post("/api/cdd/personal")
-def cdd_personal(payload: dict):
+def cdd_personal(payload: dict, request: Request = None):
     name = str(payload.get("name") or "").strip()
     id_no = str(payload.get("id_no") or "").strip()
     id_expiry = str(payload.get("id_expiry") or "").strip()
@@ -62,7 +63,7 @@ def cdd_personal(payload: dict):
     try:
         # 隐私红线：审计只记姓名与证件号掩码，绝不落完整证件号
         audit_chain.record(
-            conn, actor="演示用户（未鉴权）", action="CDD身份核验",
+            conn, actor=auth.actor_label(request), action="CDD身份核验",
             object_type="cdd_personal", object_id=name[:80],
             detail={"provider": provider,
                     "id_masked": result.get("id_masked", ""),
