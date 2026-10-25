@@ -4,11 +4,32 @@
     "boundary": "演示级实现：生产环境必须对接机构统一身份认证（4A/AD）+ 硬件令牌；口令策略、锁定、双人复核由统一认证体系承担，不得使用本文件形态。"
   },
   "users": [
-    {"username": "jingban", "password_sha256": "afac457106a70b6cfd95e4ce2167359f9a156bf8d88d6e627cd26c084e99dea9",
-     "name": "陈立", "id": "NJ-AML-0231", "post": "GW-AML-01", "role": "operator", "role_name": "经办"},
-    {"username": "fuhe", "password_sha256": "afac457106a70b6cfd95e4ce2167359f9a156bf8d88d6e627cd26c084e99dea9",
-     "name": "张敏", "id": "NJ-AML-0108", "post": "GW-AML-02", "role": "reviewer", "role_name": "复核"},
-    {"username": "shenpi", "password_sha256": "afac457106a70b6cfd95e4ce2167359f9a156bf8d88d6e627cd26c084e99dea9",
-     "name": "王建国", "id": "NJ-CC-0006", "post": "GW-CC-01", "role": "approver", "role_name": "审批"}
+    {
+      "username": "jingban",
+      "password_sha256": "e2360caa2c5d09eeb256df5fd457d7aa7d7eed9ac1130f9651bbda327e89fa6d",
+      "name": "陈立",
+      "id": "NJ-AML-0231",
+      "post": "GW-AML-01",
+      "role": "operator",
+      "role_name": "经办"
+    },
+    {
+      "username": "fuhe",
+      "password_sha256": "e2360caa2c5d09eeb256df5fd457d7aa7d7eed9ac1130f9651bbda327e89fa6d",
+      "name": "张敏",
+      "id": "NJ-AML-0108",
+      "post": "GW-AML-02",
+      "role": "reviewer",
+      "role_name": "复核"
+    },
+    {
+      "username": "shenpi",
+      "password_sha256": "e2360caa2c5d09eeb256df5fd457d7aa7d7eed9ac1130f9651bbda327e89fa6d",
+      "name": "王建国",
+      "id": "NJ-CC-0006",
+      "post": "GW-CC-01",
+      "role": "approver",
+      "role_name": "审批"
+    }
   ]
 }

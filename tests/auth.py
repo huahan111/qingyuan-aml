@@ -19,14 +19,14 @@ os.environ["QINGYUAN_DB"] = TEST_DB
 os.environ["QINGYUAN_READ_ONLY"] = "0"
 os.environ["QINGYUAN_RATE_LIMIT"] = "0"
 os.environ["QINGYUAN_AUTH"] = "1"      # 本套件的主角：鉴权开启
-os.environ["QINGYUAN_DEMO_PASSWORD"] = "见后端启动日志"   # 测试固定口令，生产/演示由首次启动随机生成
+os.environ["QINGYUAN_DEMO_PASSWORD"] = "test-only-pwd-1234"   # 测试固定口令，生产/演示由首次启动随机生成
 sys.path.insert(0, BACKEND)
 
 import main  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 CLIENT = TestClient(main.app)
-PWD = "见后端启动日志"
+PWD = "test-only-pwd-1234"
 
 
 def _login(username):
