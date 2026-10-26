@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
 <title>清源AML · 反洗钱智能监测平台</title>
-<link rel="stylesheet" href="/static/css/app.css?v=15">
+<link rel="stylesheet" href="/static/css/app.css?v=16">
 </head>
 <body>
 
@@ -298,13 +298,19 @@
         <button class="btn ghost small" id="btnEdit" onclick="toggleEdit()">✎ 编辑修订</button>
         <button class="btn small" id="btnSaveEdit" style="display:none" onclick="saveEdits()">保存修订</button>
         <button class="btn ghost small" onclick="printReport()">🖨 打印确认</button>
-        <button class="btn ghost small" onclick="exportReportXml()">导出要素 XML 草稿</button>
+        <button class="btn ghost small" id="btnXml" onclick="exportReportXml()"
+                title="给系统对接用的报文草稿（XML 源码），不是阅读件；未经 CAMLMAC XSD 校验，不可直接报送">⤓ 导出报文草稿（XML）</button>
         <button class="btn small" id="docSignBtn" onclick="startSign()">确认初稿 · 进入签字授权</button>
         <button class="btn small" id="docSubmitBtn" onclick="submitReport()" style="display:none;">提交报送 →</button>
         <button class="btn ghost small" id="docBackAuth" onclick="backToAuth()" style="display:none;">← 返回签字授权</button>
         <button class="btn ghost small mask-close" onclick="closeReport()">关闭</button>
         <span style="font-size:12px;color:var(--muted);" id="docActionHint"></span>
       </div>
+    </div>
+    <div id="xmlHint" class="str-note" style="margin:0 0 8px;">
+      关于「报文草稿（XML）」：它是给报送前置机或核心系统对接用的结构化报文，不是给人阅读的报表——
+      用记事本或浏览器打开能看到标签和字段，属于正常现象。本演示未接入 CAMLMAC XSD 校验与机构签名，
+      不能直接用于正式报送；演示里看「要素对照表」即可，没必要下载它。
     </div>
     <div class="lang-tabs">
       <span class="lang-tab on" id="lt-tbl" onclick="reportTab('tbl')">要素对照表（62 项）</span>
@@ -331,16 +337,16 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="/static/js/config.js?v=15"></script>
-<script src="/static/js/core.js?v=15"></script>
-<script src="/static/js/login.js?v=15"></script>
-<script src="/static/js/dashboard.js?v=15"></script>
-<script src="/static/js/submissions.js?v=15"></script>
-<script src="/static/js/cases.js?v=15"></script>
-<script src="/static/js/report.js?v=15"></script>
-<script src="/static/js/auth.js?v=15"></script>
-<script src="/static/js/flow.js?v=15"></script>
-<script src="/static/js/cdd.js?v=15"></script>
-<script src="/static/js/app.js?v=15"></script>
+<script src="/static/js/config.js?v=16"></script>
+<script src="/static/js/core.js?v=16"></script>
+<script src="/static/js/login.js?v=16"></script>
+<script src="/static/js/dashboard.js?v=16"></script>
+<script src="/static/js/submissions.js?v=16"></script>
+<script src="/static/js/cases.js?v=16"></script>
+<script src="/static/js/report.js?v=16"></script>
+<script src="/static/js/auth.js?v=16"></script>
+<script src="/static/js/flow.js?v=16"></script>
+<script src="/static/js/cdd.js?v=16"></script>
+<script src="/static/js/app.js?v=16"></script>
 </body>
 </html>

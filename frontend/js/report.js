@@ -347,7 +347,7 @@ function exportReportXml(){
   a.href = URL.createObjectURL(blob);
   a.download = `${rep.report_no}_要素草稿.xml`;
   a.click(); URL.revokeObjectURL(a.href);
-  toast("已导出要素 XML 草稿（未通过 CAMLMAC XSD 校验）");
+  toast("已导出报文草稿：XML 是给系统对接用的源码，用记事本打开即为此形态；未经 XSD 校验，不可直接报送");
 }
 function closeReport(){
   document.getElementById("reportMask").classList.remove("show");
