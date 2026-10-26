@@ -129,6 +129,10 @@ async function runScan(){
 
 async function runBackScreen(){
   const box = document.getElementById("backScreenResult");
+  if(state.readOnly){
+    box.innerHTML = '<div class="miss-box">线上为只读演示：回溯筛查会写入审计链，已在只读模式下禁用（写接口 403 属预期）。完整功能可本地 <b>./run.sh</b> 一键运行，或点仓库首页 Codespaces 按钮云端起环境。</div>';
+    return;
+  }
   box.innerHTML = '<span class="loading"></span> 回溯筛查中…';
   try{
     const d = await jpost("/api/screening/back-screening", {});
