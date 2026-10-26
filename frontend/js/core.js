@@ -23,11 +23,52 @@ function esc(s){
   // 单引号也须转义：大量 onclick 属性用单引号包插值，漏掉即成注入点
   return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
-async function jget(url){ const r = await fetch(url); if(r.status===401){ showLogin(); } if(!r.ok) throw new Error(await r.text()); return r.json(); }
+/* 统一请求出口：带超时与一次重试。
+   托管环境的网关偶发会卡住个别请求，原先裸 fetch 会一直挂着，
+   调用方 await 不返回 → 首屏永远转圈。这里 12 秒超时，失败重试一次。 */
+const FETCH_TIMEOUT = 12000;
+async function _fetch(url, opt, retryLeft){
+  const ctl = new AbortController();
+  const timer = setTimeout(()=>ctl.abort(), FETCH_TIMEOUT);
+  try{
+    return await fetch(url, Object.assign({}, opt, {signal: ctl.signal}));
+  }catch(e){
+    if(retryLeft > 0){
+      await new Promise(s=>setTimeout(s, 700));
+      return _fetch(url, opt, retryLeft - 1);
+    }
+    throw e;
+  }finally{
+    clearTimeout(timer);
+  }
+}
+async function jget(url){
+  const r = await _fetch(url, {}, 1);
+  if(r.status===401){ showLogin(); }
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
 async function jpost(url, body){
   const opt = {method: "POST"};
   if(body !== undefined){ opt.headers = {"Content-Type": "application/json"}; opt.body = JSON.stringify(body); }
-  const r = await fetch(url, opt); if(r.status===401){ showLogin(); } if(!r.ok) throw new Error(await r.text()); return r.json();
+  const r = await _fetch(url, opt, 1);
+  if(r.status===401){ showLogin(); }
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+/* 限并发地跑一批请求：首屏原本一次性并发 20 个，容易把弱环境的连接打满 */
+async function mapLimit(items, limit, fn){
+  const out = new Array(items.length);
+  let idx = 0;
+  const workers = Array.from({length: Math.min(limit, items.length)}, async ()=>{
+    while(idx < items.length){
+      const i = idx++;
+      try{ out[i] = await fn(items[i], i); }
+      catch(e){ out[i] = null; }
+    }
+  });
+  await Promise.all(workers);
+  return out;
 }
 function fmtAmt(n){ return "¥" + Number(n).toLocaleString("zh-CN", {maximumFractionDigits: 2}); }
 
