@@ -420,6 +420,15 @@ def list_regulations():
 # 前端静态文件（单文件应用）
 # 兼容 /index.html、/index.htm、/home 等旧链接入口：老 Demo 是静态站，
 # 浏览器书签/平台卡片常带 /index.html，直接落到 FastAPI 会 404。
+# 演示视频（本人配音，逐句对齐讲解）；文件在 docs/media/，缺失时 404 不影响主站
+@app.get("/demo-video.mp4", include_in_schema=False)
+def demo_video():
+    path = os.path.join(BASE_DIR, "..", "docs", "media", "demo-video.mp4")
+    if not os.path.isfile(path):
+        raise HTTPException(404, "Not Found")
+    return FileResponse(path, media_type="video/mp4")
+
+
 @app.get("/")
 @app.get("/index.html")
 @app.get("/index.htm")
