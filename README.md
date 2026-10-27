@@ -10,6 +10,8 @@
 
 **[▶ 3 分钟演示视频（本人配音）](https://qingyuan-aml-demo.app.workbuddy.host/demo-video.mp4)** ｜ 仓库内副本：[docs/media/demo-video.mp4](docs/media/demo-video.mp4) ｜ 逐句对齐的录屏讲解，覆盖预警溯源 → STR 报告 → 审计链 → 名单筛查 → 尽职调查 → 风险评级
 
+> 旧版静态 Demo 已归档：<https://qingyuan-aml-demo.app.workbuddy.host/legacy-demo.html>（界面固定、无后端，仅供对照）
+
 ## 系统架构
 
 ```

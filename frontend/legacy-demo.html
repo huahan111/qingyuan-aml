@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>清源 AML · 反洗钱智能监测平台（产品 Demo）</title>
+<style>
+  :root{
+    --primary:#1d4ed8; --primary-bg:#eff4ff; --bg:#f4f6fa; --card:#ffffff;
+    --border:#e4e8f0; --text:#1f2937; --muted:#6b7280;
+    --red:#dc2626; --red-bg:#fef2f2; --amber:#d97706; --amber-bg:#fffbeb;
+    --green:#15803d; --green-bg:#f0fdf4; --purple:#7c3aed; --purple-bg:#f5f3ff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;}
+  body{background:var(--bg);color:var(--text);font-size:14px;}
+  .layout{display:flex;min-height:100vh;}
+  /* ===== 侧边栏 ===== */
+  .sidebar{width:216px;background:#0f1e3d;color:#cbd5e1;padding:18px 0;flex-shrink:0;}
+  .logo{padding:0 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
+  .logo b{color:#fff;font-size:17px;letter-spacing:1px;}
+  .logo span{display:block;font-size:11px;color:#7c8db0;margin-top:4px;}
+  .nav{margin-top:10px;}
+  .nav a{display:flex;align-items:center;gap:10px;padding:11px 20px;color:#aab8d4;text-decoration:none;font-size:14px;cursor:pointer;border-left:3px solid transparent;}
+  .nav a:hover{background:rgba(255,255,255,.05);color:#fff;}
+  .nav a.active{background:rgba(29,78,216,.25);color:#fff;border-left-color:#4f83f1;}
+  .nav a .ico{width:18px;text-align:center;}
+  .side-note{margin:26px 16px 0;padding:12px;border-radius:8px;background:rgba(255,255,255,.05);font-size:11.5px;line-height:1.7;color:#8fa1c4;}
+  /* ===== 主区域 ===== */
+  .main{flex:1;padding:22px 28px;max-width:1080px;}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+  .topbar h1{font-size:19px;}
+  .topbar .sub{color:var(--muted);font-size:12.5px;margin-top:3px;}
+  .user-chip{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);}
+  .avatar{width:34px;height:34px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;}
+  .page{display:none;}
+  .page.active{display:block;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:16px;}
+  .card h3{font-size:15px;margin-bottom:12px;}
+  .card h3 small{font-weight:400;color:var(--muted);margin-left:8px;font-size:12px;}
+  /* 统计卡 */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;}
+  .stat .num{font-size:26px;font-weight:700;margin:4px 0;}
+  .stat .lbl{color:var(--muted);font-size:12.5px;}
+  .stat .trend{font-size:11.5px;}
+  .tred{color:var(--red);} .tgreen{color:var(--green);} .tamber{color:var(--amber);}
+  /* 表格 */
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{background:#f8fafc;color:var(--muted);text-align:left;padding:9px 10px;font-weight:500;border-bottom:1px solid var(--border);white-space:nowrap;}
+  td{padding:10px;border-bottom:1px solid #f0f2f7;vertical-align:top;}
+  tr.clickable:hover{background:var(--primary-bg);cursor:pointer;}
+  /* 标签 */
+  .tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;white-space:nowrap;}
+  .tag.red{background:var(--red-bg);color:var(--red);}
+  .tag.amber{background:var(--amber-bg);color:var(--amber);}
+  .tag.green{background:var(--green-bg);color:var(--green);}
+  .tag.blue{background:var(--primary-bg);color:var(--primary);}
+  .tag.purple{background:var(--purple-bg);color:var(--purple);}
+  .tag.gray{background:#f1f5f9;color:#475569;}
+  /* 进度条形图 */
+  .bars{display:flex;align-items:flex-end;gap:14px;height:120px;padding-top:8px;}
+  .bar-w{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .bar{width:100%;border-radius:5px 5px 0 0;background:linear-gradient(180deg,#4f83f1,#1d4ed8);}
+  .bar-w span{font-size:11px;color:var(--muted);}
+  .bar-w .v{font-size:12px;font-weight:600;color:var(--text);}
+  /* AI 诊断 */
+  .ai-box{border:1px solid #c7d2fe;background:linear-gradient(180deg,#f5f7ff,#eef2ff);border-radius:10px;padding:16px 18px;}
+  .ai-head{display:flex;align-items:center;gap:9px;margin-bottom:10px;}
+  .ai-badge{background:var(--purple);color:#fff;font-size:11.5px;padding:3px 10px;border-radius:20px;font-weight:600;}
+  .ai-head small{color:var(--muted);}
+  .ai-box p{font-size:13px;line-height:1.85;margin-bottom:8px;}
+  .ai-box .sec{font-weight:600;color:var(--purple);margin-top:12px;font-size:13px;}
+  .confidence{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);}
+  .conf-track{width:120px;height:6px;border-radius:4px;background:#e2e8f0;overflow:hidden;}
+  .conf-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#8b5cf6,#6d28d9);}
+  /* 按钮 */
+  .btn{display:inline-block;border:none;border-radius:7px;padding:8px 18px;font-size:13px;cursor:pointer;margin-right:10px;}
+  .btn.primary{background:var(--primary);color:#fff;}
+  .btn.primary:hover{background:#1a3fb0;}
+  .btn.ghost{background:#fff;border:1px solid var(--border);color:var(--text);}
+  .btn.ghost:hover{background:#f8fafc;}
+  .btn.small{padding:5px 12px;font-size:12px;margin:0;}
+  /* 详情页 */
+  .detail-header{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+  .detail-header h2{font-size:17px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .kv{display:grid;grid-template-columns:110px 1fr;row-gap:7px;font-size:13px;}
+  .kv dt{color:var(--muted);} .kv dd{margin:0;}
+  /* 时间线 */
+  .tl{list-style:none;}
+  .tl li{position:relative;padding:0 0 16px 22px;border-left:2px solid #dbe3ef;margin-left:6px;}
+  .tl li:last-child{border-left-color:transparent;padding-bottom:0;}
+  .tl li::before{content:"";position:absolute;left:-6px;top:4px;width:10px;height:10px;border-radius:50%;background:#4f83f1;border:2px solid #fff;box-shadow:0 0 0 1px #dbe3ef;}
+  .tl li.hot::before{background:var(--red);}
+  .tl .t{font-size:12px;color:var(--muted);}
+  .tl .d{font-size:13px;margin-top:2px;}
+  /* 全流程演示 */
+  .steps{display:flex;gap:6px;margin-bottom:16px;}
+  .step{flex:1;text-align:center;padding:9px 4px;border-radius:7px;background:#f1f5f9;color:#94a3b8;font-size:12px;font-weight:500;}
+  .step.on{background:var(--primary);color:#fff;box-shadow:0 3px 10px rgba(29,78,216,.3);}
+  .step.done{background:var(--green-bg);color:var(--green);}
+  .flow-log{background:#0f1e3d;color:#a5f3fc;border-radius:8px;padding:14px 16px;font-family:"SF Mono",Menlo,monospace;font-size:12px;line-height:2;min-height:150px;}
+  .pbar{height:8px;border-radius:4px;background:#e2e8f0;overflow:hidden;margin:12px 0;}
+  .pbar div{height:100%;width:0;background:linear-gradient(90deg,#4f83f1,#1d4ed8);transition:width .5s;}
+  tr.sel{outline:2px solid var(--primary);outline-offset:-2px;background:var(--primary-bg);}
+  .lang-tabs{display:flex;gap:6px;margin:10px 0;}
+  .lang-tab{padding:4px 16px;border-radius:20px;font-size:12px;background:#eef2ff;color:var(--primary);cursor:pointer;}
+  .lang-tab.on{background:var(--primary);color:#fff;}
+  /* STR 62 项要素对照表单 */
+  .str-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;background:var(--primary-bg);border:1px solid #c7d2fe;border-radius:8px;padding:10px 14px;margin-bottom:10px;}
+  .str-head .t{font-size:13px;font-weight:600;color:var(--primary);}
+  .str-head .s{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.6;}
+  .str-cnt{font-size:12px;color:var(--muted);white-space:nowrap;}
+  .str-cnt b{color:var(--primary);font-size:13.5px;}
+  .str-cnt em{font-style:normal;display:inline-block;padding:1px 7px;border-radius:10px;margin-left:5px;font-size:11.5px;}
+  .c-auto{background:#eef2ff;color:#4338ca;}
+  .c-ai{background:#f3e8ff;color:#7e22ce;}
+  .c-todo{background:var(--amber-bg);color:var(--amber);}
+  .c-na{background:#f1f5f9;color:#64748b;}
+  .str-box{max-height:440px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:#fff;}
+  .str-box table{margin:0;font-size:12.5px;}
+  .str-box th{position:sticky;top:0;z-index:2;background:#f8fafc;}
+  tr.str-part td{background:#eef2ff;color:var(--primary);font-weight:600;font-size:12px;padding:6px 12px;letter-spacing:.3px;}
+  tr.str-row td{padding:7px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top;line-height:1.65;}
+  tr.str-row td.str-n{width:40px;text-align:center;color:#94a3b8;font-family:"SF Mono",Menlo,monospace;font-size:11.5px;}
+  tr.str-row td.str-name{width:216px;color:#334155;}
+  tr.str-row.ai td.str-val{background:#fdfaff;}
+  tr.str-row.todo td.str-val{background:#fffdf5;color:var(--amber);}
+  tr.str-row.na td.str-val{color:#94a3b8;}
+  .str-tag{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:9px;margin-left:6px;white-space:nowrap;vertical-align:middle;}
+  .str-tag.auto{background:#eef2ff;color:#4338ca;}
+  .str-tag.ai{background:#f3e8ff;color:#7e22ce;}
+  .str-tag.todo{background:var(--amber-bg);color:var(--amber);}
+  .str-note{font-size:11.5px;color:var(--muted);line-height:1.75;margin-top:8px;}
+  .doc .str-box{max-height:none;border:none;}
+  .doc .str-box table{font-size:11.5px;}
+  .doc tr.str-row td{padding:5px 8px;}
+  .doc tr.str-row td.str-name{width:190px;}
+  .doc .str-head{background:#f7f9fc;}
+  /* 报文预览模态 */
+  #doc-mask{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:flex-start;justify-content:center;z-index:50;overflow:auto;padding:30px 12px;}
+  #doc-mask.show{display:flex;}
+  .doc{background:#fff;max-width:760px;width:100%;border-radius:8px;padding:34px 42px;box-shadow:0 12px 40px rgba(0,0,0,.3);}
+  .doc h2{text-align:center;font-size:18px;margin-bottom:4px;}
+  .doc .doc-sub{text-align:center;color:var(--muted);font-size:12px;margin-bottom:16px;}
+  .doc pre{white-space:pre-wrap;font-family:"Songti SC","SimSun",serif;font-size:13.5px;line-height:2;margin:0;}
+  .doc .doc-foot{margin-top:22px;display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid var(--border);padding-top:16px;font-size:13px;flex-wrap:wrap;gap:12px;}
+  .sign-slot{min-width:160px;text-align:center;}
+  .sign-hint{color:#94a3b8;font-size:12px;}
+  .sign{font-family:"Snell Roundhand","Brush Script MT",cursive;font-size:26px;color:#1d3b8f;transform:rotate(-4deg);display:inline-block;}
+  .stamp{display:inline-block;border:2.5px solid var(--red);color:var(--red);border-radius:6px;padding:3px 10px;font-size:12px;font-weight:700;transform:rotate(-8deg);opacity:.85;margin-left:6px;}
+  .doc-actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
+  /* Toast */
+  #toast{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-80px);background:#111827;color:#fff;padding:11px 24px;border-radius:8px;font-size:13.5px;transition:.35s;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.25);}
+  #toast.show{transform:translateX(-50%) translateY(0);}
+  /* 规则开关 */
+  .switch{position:relative;width:36px;height:20px;background:#cbd5e1;border-radius:20px;cursor:pointer;transition:.2s;display:inline-block;vertical-align:middle;}
+  .switch::after{content:"";position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+  .switch.on{background:var(--green);}
+  .switch.on::after{left:18px;}
+  /* 筛查 */
+  .search-row{display:flex;gap:10px;margin-bottom:6px;}
+  .search-row input{flex:1;border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;outline:none;}
+  .search-row input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(29,78,216,.12);}
+  .chips{margin:10px 0 14px;}
+  .chip{display:inline-block;background:#eef2ff;color:var(--primary);border-radius:20px;padding:4px 13px;font-size:12.5px;margin:0 8px 8px 0;cursor:pointer;}
+  .chip:hover{background:#dbe4ff;}
+  .hit-row{background:var(--red-bg);border:1px solid #fecaca;}
+  .footer-note{color:#94a3b8;font-size:11.5px;text-align:center;margin:26px 0 8px;}
+  .mono{font-family:"SF Mono",Menlo,monospace;font-size:12px;}
+  .banner{background:linear-gradient(90deg,#eef4ff,#f8fbff);border:1px solid #d4e2f7;border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:13px;line-height:1.8;color:#334155;}
+  .banner b{color:var(--primary);}
+</style>
+</head>
+<body>
+<div style="position:fixed;left:0;right:0;top:0;z-index:99999;background:#b45309;color:#fff;font-size:13px;padding:8px 16px;text-align:center;font-family:-apple-system,'PingFang SC',sans-serif;">这是 2026-10 的旧版静态演示（已归档，界面固定、无后端）｜ <a href="/" style="color:#fff;text-decoration:underline;">→ 打开新版 MVP（可真实操作）</a></div>
+
+<div class="layout">
+
+
+  <aside class="sidebar">
+    <div class="logo"><b>清源 AML</b><span>反洗钱智能监测平台 · v1.0 Demo</span></div>
+    <nav class="nav">
+      <a class="active" data-page="dashboard"><span class="ico">◱</span> 工作台</a>
+      <a data-page="flow"><span class="ico">▶</span> 全流程演示</a>
+      <a data-page="alerts"><span class="ico">⚠</span> 可疑交易预警 <span class="tag red" style="margin-left:auto;">8</span></a>
+      <a data-page="screening"><span class="ico">⌕</span> 名单筛查</a>
+      <a data-page="ctr"><span class="ico">¥</span> 大额交易报告</a>
+      <a data-page="cdd"><span class="ico">✎</span> 客户尽职调查（CDD）</a>
+      <a data-page="rating"><span class="ico">◐</span> 客户风险评级</a>
+      <a data-page="rules"><span class="ico">⚙</span> 监测规则配置</a>
+      <a data-page="reports"><span class="ico">▤</span> 报送流转（人行）</a>
+    </nav>
+    <div class="side-note">本平台为个人产品作品（PRD + 交互 Demo）。演示数据均为虚构，监管依据：《反洗钱法》（2025.1.1 施行）、人行 3 号令等。</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ============ 工作台 ============ -->
+    <section id="page-dashboard" class="page active">
+      <div class="topbar">
+        <div><h1>工作台</h1><div class="sub">反洗钱专岗 · 南京××商业银行 · 2026-10-07（演示数据）</div></div>
+        <div class="user-chip"><div class="avatar">冯</div>冯宇 · 反洗钱专岗</div>
+      </div>
+      <div class="banner">
+        <b>产品设计说明：</b>本平台把一线执行中"看数据 → 翻资料 → 凭经验判断 → 手工写报告"的流程，重构为
+        <b>规则引擎触发 → AI 智能诊断 → 人工复核处置 → 一键报送</b> 的闭环，解决现有系统<b>告警量大、误报率高、一线只当"点确认员"</b>三大痛点。
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="lbl">今日新增预警</div><div class="num">23</div><div class="trend tred">↑ 较昨日 +5</div></div>
+        <div class="stat"><div class="lbl">待处理预警</div><div class="num">8</div><div class="trend tamber">其中高风险 3 条</div></div>
+        <div class="stat"><div class="lbl">本周已报送 STR</div><div class="num">5</div><div class="trend tgreen">按期报送率 100%</div></div>
+        <div class="stat"><div class="lbl">名单待人工复核</div><div class="num">2</div><div class="trend tamber">涉恐类已即时冻结</div></div>
+      </div>
+      <div class="grid2">
+        <div class="card"><h3>近 7 日预警趋势 <small>规则引擎触发量</small></h3>
+          <div class="bars">
+            <div class="bar-w"><span class="v">31</span><div class="bar" style="height:86px"></div><span>09-30</span></div>
+            <div class="bar-w"><span class="v">27</span><div class="bar" style="height:74px"></div><span>10-01</span></div>
+            <div class="bar-w"><span class="v">35</span><div class="bar" style="height:97px"></div><span>10-02</span></div>
+            <div class="bar-w"><span class="v">18</span><div class="bar" style="height:50px"></div><span>10-03</span></div>
+            <div class="bar-w"><span class="v">22</span><div class="bar" style="height:60px"></div><span>10-04</span></div>
+            <div class="bar-w"><span class="v">26</span><div class="bar" style="height:72px"></div><span>10-05</span></div>
+            <div class="bar-w"><span class="v">23</span><div class="bar" style="height:64px"></div><span>10-06</span></div>
+          </div>
+        </div>
+        <div class="card"><h3>高频触发规则 TOP 5 <small>用于评估规则有效性</small></h3>
+          <table>
+            <tr><th>规则</th><th>本周命中</th><th>有效率</th></tr>
+            <tr><td>R002 分拆交易规避大额申报</td><td>214</td><td><span class="tag green">71%</span></td></tr>
+            <tr><td>R003 资金快进快出</td><td>186</td><td><span class="tag green">64%</span></td></tr>
+            <tr><td>R007 公私账户高频互转（空壳特征）</td><td>97</td><td><span class="tag amber">38%</span></td></tr>
+            <tr><td>R004 夜间高频交易</td><td>64</td><td><span class="tag amber">31%</span></td></tr>
+            <tr><td>R006 新开户短期大额跨境</td><td>41</td><td><span class="tag green">58%</span></td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="card"><h3>今日待办</h3>
+        <table>
+          <tr><th>事项</th><th>类型</th><th>剩余时限</th><th>状态</th></tr>
+          <tr><td>AL20261007-003 预警研判（涉恐名单命中）</td><td><span class="tag red">紧急</span></td><td>已冻结 · 24h 内上报</td><td><span class="tag amber">待复核</span></td></tr>
+          <tr><td>AL20261006-011 STR 报文补录交易说明</td><td><span class="tag blue">报送</span></td><td>今日 18:00 前</td><td><span class="tag amber">进行中</span></td></tr>
+          <tr><td>客户风险等级年审：李某（对公）</td><td><span class="tag gray">评级</span></td><td>3 日内</td><td><span class="tag gray">未开始</span></td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 全流程演示 ============ -->
+    <section id="page-flow" class="page">
+      <div class="topbar"><div><h1>全流程演示</h1><div class="sub">扫描识别 → 预警筛选 → 研判处置 → STR 生成（中/英） → 报告预览 → 打印签字确认</div></div></div>
+      <div class="card">
+        <div class="steps" id="flow-steps">
+          <div class="step on">① 系统扫描</div><div class="step">② 预警筛选</div><div class="step">③ 研判处置</div><div class="step">④ STR 生成</div><div class="step">⑤ 预览签署</div><div class="step">⑥ 复核授权</div><div class="step">⑦ 报送人行</div>
+        </div>
+        <div id="flow-body"></div>
+      </div>
+    </section>
+
+    <!-- ============ 预警列表 ============ -->
+    <section id="page-alerts" class="page">
+      <div class="topbar"><div><h1>可疑交易预警</h1><div class="sub">规则引擎实时触发 · AI 预诊断后按风险分级推送</div></div></div>
+      <div class="card">
+        <table>
+          <tr><th>预警编号</th><th>客户</th><th>触发规则</th><th>可疑金额</th><th>AI 风险分</th><th>状态</th></tr>
+          <tbody id="alert-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 预警详情 ============ -->
+    <section id="page-detail" class="page"></section>
+
+    <!-- ============ 名单筛查 ============ -->
+    <section id="page-screening" class="page">
+      <div class="topbar"><div><h1>名单筛查</h1><div class="sub">制裁 / 恐怖活动 / PEP 政要名单 · 模糊匹配 · 筛查留痕</div></div></div>
+      <div class="banner">
+        <b>名单库分级设计（产品决策）：</b>核心库只放<b>境内法定名单</b>——联合国安理会制裁名单（我国《涉及恐怖活动资产冻结管理办法》《反洗钱法》特别预防措施的法定执行依据）、境内主管部门认定的涉恐及制裁名单、PEP 政要名单；OFAC / 欧盟 / 英国等境外名单作为<b>可扩展名单库</b>选配（仅跨境美元业务等有暴露的机构启用）——范围与法定义务严格对齐，避免"为筛而筛"放大误报。
+      </div>
+      <div class="card">
+        <h3>客户与交易对手筛查 <small>支持中文 / 拼音 / 曾用名 / 音译变体</small></h3>
+        <div class="search-row">
+          <input id="scan-input" placeholder="输入客户姓名、拼音或证件号（演示版可用下方示例）">
+          <button class="btn primary" onclick="runScan()">立即筛查</button>
+        </div>
+        <div style="margin:12px 0 4px;font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:10px;">
+          境外扩展名单库（OFAC / EU / UK，选配）：<span class="switch" id="ext-switch" onclick="extToggle(this)"></span>
+          <span id="ext-note" style="font-size:12px;">未启用 —— 当前仅筛查境内法定名单核心库</span>
+        </div>
+        <div class="chips">
+          示例：
+          <span class="chip" onclick="fillScan('张伟民')">张伟民</span>
+          <span class="chip" onclick="fillScan('LI XIAOMING')">LI XIAOMING</span>
+          <span class="chip" onclick="fillScan('陈建国')">陈建国</span>
+          <span class="chip" onclick="fillScan('某某贸易有限公司')">某某贸易有限公司</span>
+        </div>
+        <div id="scan-result"></div>
+      </div>
+      <div class="card"><h3>设计要点（产品视角）</h3>
+        <ul style="padding-left:18px;line-height:2;font-size:13px;">
+          <li><b>模糊匹配 + 相似度阈值：</b>音译、拼音倒序、名字增删字均可命中，杜绝"换了写法就漏筛"——这是一线最常见的漏报风险。</li>
+          <li><b>命名空间分离：</b>名单库版本、命中判定人、复核时间全部留痕，满足监管"可回溯"要求。</li>
+          <li><b>涉恐类名单即时拦截：</b>命中即冻结账户并触发 24 小时内上报流程，不进入普通预警队列。</li>
+          <li><b>误报批量复核：</b>对同音不同人等常见误报，支持一键批量排除并记录排除理由，减轻一线 70% 复核量。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ 大额交易报告 ============ -->
+    <section id="page-ctr" class="page">
+      <div class="topbar"><div><h1>大额交易报告</h1><div class="sub">依据人行 3 号令：达到标准即报，无需人工判断可疑 · 系统自动采集、生成、报送</div></div></div>
+      <div class="banner">
+        <b>与"可疑交易报告"的分工（产品设计核心逻辑）：</b>大额报告是<b>客观标准</b>（金额达标即报，如当日单笔/累计现金 ≥5 万元），系统自动完成，不占一线研判精力；可疑报告是<b>主观判断</b>（合理怀疑），需要 AI 辅助 + 人工研判。两条线并行、互不替代，共同构成 3 号令项下的完整报送义务。
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="lbl">今日应报大额</div><div class="num">47</div><div class="trend tgreen">自动生成率 100%</div></div>
+        <div class="stat"><div class="lbl">报送成功率</div><div class="num">98.6%</div><div class="trend tamber">1 条待补录要素</div></div>
+        <div class="stat"><div class="lbl">大额类型分布</div><div class="num" style="font-size:15px;line-height:2.4;">现金 / 转账 / 跨境</div><div class="trend">可疑监测规则 R001–R016 联动</div></div>
+        <div class="stat"><div class="lbl">本月累计报送</div><div class="num">1,312</div><div class="trend tgreen">全部按期</div></div>
+      </div>
+      <div class="card"><h3>本日大额交易报送清单（演示）</h3>
+        <table>
+          <tr><th>报文编号</th><th>交易类型</th><th>触发标准（3 号令）</th><th>金额</th><th>报文状态</th></tr>
+          <tr><td class="mono">CTR-20261007-0031</td><td>现金存款</td><td>当日单笔现金 ≥ ¥50,000</td><td>¥85,000</td><td><span class="tag green">已报送反洗钱监测分析机构</span></td></tr>
+          <tr><td class="mono">CTR-20261007-0032</td><td>现金存款</td><td>当日累计现金 ≥ ¥50,000（3 笔归集）</td><td>¥121,000</td><td><span class="tag green">已报送</span></td></tr>
+          <tr><td class="mono">CTR-20261007-0033</td><td>跨境汇款</td><td>境内转账 ≥ ¥200,000（跨境 ≥ ¥10,000 等值标准示例）</td><td>¥310,000</td><td><span class="tag amber">要素待补录（收款行 BIC）</span></td></tr>
+          <tr><td class="mono">CTR-20261007-0034</td><td>对公转账</td><td>当日单笔/累计转账 ≥ ¥2,000,000（对公示例标准）</td><td>¥4,500,000</td><td><span class="tag green">已报送</span></td></tr>
+        </table>
+        <p style="margin-top:12px;font-size:12.5px;color:var(--muted);">演示数据，金额标准为 3 号令体系的示例化呈现；实际阈值以现行有效版本及各交易类型法定标准为准。要素补录配备 RPA 自动回捞（参考上海农商银行实践），减少人工补录。</p>
+      </div>
+      <div class="card"><h3>设计要点（产品视角）</h3>
+        <ul style="padding-left:18px;line-height:2;font-size:13px;">
+          <li><b>自动归集：</b>同客户同日多笔达标交易自动归集为累计报文，杜绝"漏计累计"——这是大额漏报的最常见原因。</li>
+          <li><b>与可疑预警联动：</b>大额数据反哺监测引擎（如 R002 分拆规则依赖"贴线交易"统计），大额与可疑共用一份数据底座。</li>
+          <li><b>要素质量前置校验：</b>报文生成时按人民银行报文规范做字段校验，缺要素自动建工单，避免报送后被退回。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ 客户尽职调查 CDD ============ -->
+    <section id="page-cdd" class="page">
+      <div class="topbar"><div><h1>客户尽职调查（CDD）</h1><div class="sub">依据《反洗钱法》第 28–34 条及〔2025〕第 11 号令：风险为本，分级开展</div></div></div>
+      <div class="banner">
+        <b>新规要点（2026.1.1 施行）：</b>一次性金融服务 ≥ <b>¥50,000 / 等值 $10,000</b> 触发客户尽职调查；删除"存取现金 5 万一律登记来源"的一刀切要求，改为<b>按风险分级</b>——低风险简化尽调、高风险强化尽调（EDD）。系统设计必须跟上这个变化，把"问所有人"改成"盯该盯的人"。
+      </div>
+      <div class="card"><h3>尽调任务队列（演示）</h3>
+        <table>
+          <tr><th>任务</th><th>触发情形（11 号令）</th><th>等级</th><th>要求</th><th>状态</th></tr>
+          <tr><td>新开户尽调：赵某某</td><td>建立业务关系（法定必做）</td><td><span class="tag green">标准 CDD</span></td><td>身份证件核验、职业信息、开户目的</td><td><span class="tag blue">已由柜面完成</span></td></tr>
+          <tr><td>一次性汇款尽调：王某某</td><td>现金汇款 ¥68,000（≥5 万触发）</td><td><span class="tag green">标准 CDD</span></td><td>登记身份信息、留存证件复印件</td><td><span class="tag amber">待网点补录</span></td></tr>
+          <tr><td>强化尽调（EDD）：××贸易</td><td>触发 R007 空壳特征预警 + 高风险评级</td><td><span class="tag red">EDD</span></td><td>实地核查经营场所、核实受益所有人、了解资金来源与用途</td><td><span class="tag amber">进行中</span></td></tr>
+          <tr><td>持续尽调：李某某</td><td>交易与身份/风险状况不符（分拆存入预警）</td><td><span class="tag red">EDD</span></td><td>回访核实资金来源，评估是否限制业务</td><td><span class="tag amber">回访中</span></td></tr>
+        </table>
+      </div>
+      <div class="card"><h3>设计要点（产品视角）</h3>
+        <ul style="padding-left:18px;line-height:2;font-size:13px;">
+          <li><b>触发情形引擎化：</b>把 11 号令的法定触发情形（建立业务关系 / 一次性服务达标金额 / 合理怀疑 / 身份资料存疑）直接做成任务触发器，法定动作零遗漏。</li>
+          <li><b>简化与强化的分级执行：</b>低风险场景不打扰客户（呼应"不得一刀切"的新导向），高风险场景强制 EDD 并留痕——风险为本不是口号，是流程差异。</li>
+          <li><b>受益所有人穿透：</b>对公客户按《反洗钱法》第 19 条对接受益所有人信息管理制度，识别-核实-更新全流程留痕。</li>
+          <li><b>资料保存：</b>身份资料与交易记录按法定要求至少保存 10 年，到期前自动提示归档。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ 客户风险评级 ============ -->
+    <section id="page-rating" class="page">
+      <div class="topbar"><div><h1>客户洗钱风险评级</h1><div class="sub">静态因素 + 行为因素动态叠加 · 自动触发强化尽调（EDD）</div></div></div>
+      <div class="card"><h3>评级模型（产品定义）</h3>
+        <table>
+          <tr><th>维度</th><th>权重</th><th>典型因子</th><th>示例</th></tr>
+          <tr><td>客户身份背景</td><td>25%</td><td>职业 / 行业 / 股权结构 / 受益所有人透明度</td><td>空壳特征公司 ↑</td></tr>
+          <tr><td>业务与渠道风险</td><td>20%</td><td>现金占比 / 跨境业务 / 非面对面开户</td><td>跨境 + 现金 ↑↑</td></tr>
+          <tr><td>地域风险</td><td>20%</td><td>FATF 高风险地区往来 / 受限国家</td><td>涉高风险地区交易 ↑↑</td></tr>
+          <tr><td>行为动态风险</td><td>35%</td><td>与身份不符的异常交易、预警历史、名单关联</td><td>快进快出 + 夜间交易 ↑↑</td></tr>
+        </table>
+        <p style="margin-top:12px;font-size:12.5px;color:var(--muted);">评级结果驱动差异化管理：<span class="tag red">高风险</span> 每季度复审 + 强化尽调（EDD）　<span class="tag amber">中风险</span> 每年复审　<span class="tag green">低风险</span> 常规抽检</p>
+      </div>
+      <div class="card"><h3>在管客户评级分布（演示）</h3>
+        <table>
+          <tr><th>客户</th><th>类型</th><th>当前等级</th><th>关键升降级原因</th><th>下次复审</th></tr>
+          <tr><td>李某某（个人）</td><td>个人</td><td><span class="tag red">高</span></td><td>行为风险：14 笔分拆现金存入（AL20261007-001）</td><td>2026-01（触发升级即时复审）</td></tr>
+          <tr><td>××贸易（对公）</td><td>对公</td><td><span class="tag red">高</span></td><td>空壳特征 + 公私互转高频</td><td>2026-01</td></tr>
+          <tr><td>王某某（个人）</td><td>个人</td><td><span class="tag amber">中</span></td><td>跨境汇款频率上升</td><td>2026-04</td></tr>
+          <tr><td>赵某某（个人）</td><td>个人</td><td><span class="tag green">低</span></td><td>工资代发客群，行为稳定</td><td>2027-10</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 规则配置 ============ -->
+    <section id="page-rules" class="page">
+      <div class="topbar"><div><h1>监测规则配置</h1><div class="sub">监管条文 → 监测规则 → 可调参数：规则可解释、可回溯、可迭代</div></div></div>
+      <div class="card">
+        <table>
+          <tr><th>编号</th><th>规则名称</th><th>监管依据</th><th>关键参数</th><th>状态</th></tr>
+          <tr><td>R001</td><td>大额现金交易监测</td><td>3 号令第五条（当日单笔/累计）</td><td class="mono">现金 ≥ ¥50,000</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+          <tr><td>R002</td><td>分拆交易规避大额申报</td><td>3 号令·规避申报情形（涉罪代码 0801）</td><td class="mono">7 日内 ≥8 笔；单笔落在阈值 85%–99%；离散度 1−σ/μ ≥0.95</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+          <tr><td>R003</td><td>资金快进快出</td><td>可疑交易·资金流转异常（0802）</td><td class="mono">T+1 内转出 ≥80%；对手 ≥3 户；日终余额/入账 ≤20%</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+          <tr><td>R004</td><td>夜间高频交易</td><td>可疑交易·交易时间异常（1302）</td><td class="mono">22:00–06:00 占比 ≥70%，且连续 ≥3 个营业日</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+          <tr><td>R005</td><td>制裁/涉恐名单即时拦截</td><td>《反洗钱法》· 涉恐资产冻结</td><td class="mono">命中即冻结；不设评分阈值，零时滞</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+          <tr><td>R006</td><td>新开户短期大额跨境</td><td>3 号令第五条·跨境划转（0610）</td><td class="mono">开户 ≤90 日；跨境累计 ≥20 万（自然人）/ 200 万（对公）</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+          <tr><td>R007</td><td>公私账户高频互转（空壳特征）</td><td>可疑交易·交易背景存疑（0802）</td><td class="mono">月公私互转 ≥10 笔；无进销项发票且无社保；实缴率 0</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+          <tr><td>R008</td><td>涉虚拟货币交易特征</td><td>银发〔2021〕237 号等风险提示（1201）</td><td class="mono">对手方命中场外兑换特征词库；金额呈 1,000 元整数倍</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+          <tr><td colspan="5" style="background:#eff4ff;color:var(--primary);font-weight:600;font-size:12px;padding:6px 10px;">类型化扩展 R009–R016 ｜ 对齐人民银行《可疑交易类型和识别点对照表（银行业参考版）》官方 12 类；括号内为《疑似涉罪类型代码表》代码</td></tr>
+          <tr><td>R009</td><td>收款账户三段式分工</td><td>官方 6 类·集资（0606 非法吸收公众存款）</td><td class="mono">收款段 ≥5 笔且对手 ≥5 户；中转 24h 过账率 ≥90%；返款对手 ≥10 户且金额呈周期倍数</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+          <tr><td>R010</td><td>套现商户异常</td><td>官方 8 类·套现（1102 非法经营）</td><td class="mono">单台 POS 月累计额/月均经营入账 ≥5；同 POS ≥10 张卡规律刷卡；入账 ≤2h 转控制人</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+          <tr><td>R011</td><td>传销资金网络</td><td>官方 7 类·传销（1101 组织领导传销）</td><td class="mono">网络 ≥3 层且逐层 ≥3 倍递增；返利时点集中度 ≥80%；返利/入会费为固定比例</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+          <tr><td>R012</td><td>开户试卡特征</td><td>官方 5 类·诈骗（1201 电信诈骗）</td><td class="mono">开户首笔 ∈ {100,200,500,1000}；24h 内自助设备全额取现；30 日内无其他交易</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+          <tr><td>R013</td><td>涉税资金回流</td><td>官方 9 类·涉税犯罪（1001 逃税骗税）</td><td class="mono">对公→个人转出占比 ≥60%；进销项差异 ≤5% 的过渡交易 ≥3 笔</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+          <tr><td>R014</td><td>特定身份规模不符</td><td>官方 2 类·腐败（0502 与公职人员身份不符）</td><td class="mono">交易规模/申报收入 ≥10 倍（按职业分层）；亲属账户集中操作 ≥3 户</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+          <tr><td>R015</td><td>涉毒资金特征</td><td>官方 3 类·毒品犯罪（0101 毒品犯罪）</td><td class="mono">ATM 无卡存款/转账占比 ≥80%；多笔流入后 48h 内全额提现；金额 500/1000 元整数倍</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+          <tr><td>R016</td><td>验资账户速转</td><td>官方 12 类·虚假出资/抽逃出资（0902）</td><td class="mono">30 日内验资账户集中开立 ≥3 户；验资后 T+1 内基本户转划同名他行 ≥90%</td><td><span class="switch on" onclick="toggle(this)"></span></td></tr>
+        </table>
+        <p style="margin-top:12px;font-size:12.5px;color:var(--muted);line-height:1.9;">设计要点：规则参数线上可调、调整留痕；规则有效率纳入定期评估，长期低有效率规则自动降级为参考信号，避免"为合规而合规"淹没真风险。<br><b>关于阈值从哪来：</b>反洗钱监测规则<b>不存在统一行业阈值</b>——3 号令第十二条要求各机构自定监测标准并对其有效性负责，同时须向反洗钱监测分析中心报备《可疑交易特征代码与交易监测标准对照表》。本系统里"实际怎么算"与"向人行报备什么"是<b>同一份配置源</b>，不留两套口径。凡条文已给量化的直接采用条文口径（"短期"＝10 个工作日、"频繁"＝每日 3 次或持续 3 天、"大量"＝低于但接近大额标准），其余参数以客户自身历史基线作分母标定，并在带标签合成数据集上回测召回率与误报率。</p>
+      </div>
+    </section>
+
+    <!-- ============ 报送流转 ============ -->
+    <section id="page-reports" class="page">
+      <div class="topbar"><div><h1>报送流转（人行）</h1><div class="sub">三级流转 · 多因子授权 · 报文生成 → 加密报送 CAMLMAC → 回执归档</div></div></div>
+      <div class="banner">
+        <b>流转与授权设计（内控合规核心）：</b>STR 报送执行<b>经办 → 复核 → 审批</b>三级流转，双人复核原则；每级授权支持<b>刷员工卡 / 指纹（生物特征）/ 授权码 / CA 数字证书</b>多因子方式，授权记录绑定<b>员工号 + 岗位编号 + 时间戳 + 授权影像</b>，纸质签字页打印后扫描归档——监管检查时"谁经手、谁复核、谁审批、谁授权"四问必有答案。
+      </div>
+      <div class="card"><h3>流转看板 <small>报告在内部流转链路中的实时位置</small></h3>
+        <table>
+          <tr><th>报告编号</th><th>关联预警</th><th>经办</th><th>复核</th><th>审批</th><th>当前环节</th><th>报送状态</th></tr>
+          <tr><td class="mono">STR-2026-1007-01</td><td class="mono">AL20261007-001</td><td>冯宇 <span class="mono">NJ-AML-0231</span></td><td>张敏 <span class="mono">NJ-AML-0108</span> <span class="tag green">☝指纹</span></td><td>王建国 <span class="mono">NJ-CC-0006</span> <span class="tag green">🔑授权码</span></td><td><span class="tag blue">已授权 · 报文中</span></td><td><span class="tag amber">报送中</span></td></tr>
+          <tr><td class="mono">STR-2026-1005-01</td><td class="mono">AL20261003-007</td><td>冯宇 <span class="mono">NJ-AML-0231</span></td><td>张敏 <span class="mono">NJ-AML-0108</span> <span class="tag green">☝指纹</span></td><td>王建国 <span class="mono">NJ-CC-0006</span> <span class="tag green">☝指纹</span></td><td><span class="tag green">流转完成</span></td><td><span class="tag green">已报送 · 回执 RX-…-87602</span></td></tr>
+          <tr><td class="mono">STR-2026-1004-03</td><td class="mono">AL20261002-015</td><td>陈晨 <span class="mono">NJ-AML-0119</span></td><td>张敏 <span class="mono">NJ-AML-0108</span> <span class="tag green">🎫员工卡</span></td><td>王建国 <span class="mono">NJ-CC-0006</span> <span class="tag green">☝指纹</span></td><td><span class="tag green">流转完成</span></td><td><span class="tag green">已报送 · 回执 RX-…-86117</span></td></tr>
+          <tr><td class="mono">STR-2026-1007-02</td><td class="mono">AL20261006-011</td><td>冯宇 <span class="mono">NJ-AML-0231</span></td><td>待复核</td><td>—</td><td><span class="tag amber">待复核</span></td><td>—</td></tr>
+        </table>
+        <p style="margin-top:12px;font-size:12.5px;color:var(--muted);">时限监控：发现可疑之日起 5 个工作日内报送，系统对每级流转环节倒计时提示，临期自动升级提醒合规负责人。</p>
+      </div>
+      <div class="card"><h3>报文预览 <small>按人民银行报文规范生成 · 专线加密报送</small></h3>
+        <div class="flow-log" style="min-height:0;">&lt;Report&gt;<br>　&lt;ReportInfo&gt; 报告机构：××银行（机构代码 B0032NJ）｜报告类型：STR｜生成时间：2026-10-07 12:21:05 &lt;/ReportInfo&gt;<br>　&lt;SubjectInfo&gt; 客户要素：姓名 / 证件类型 / 证件号码（脱敏）/ 风险等级 &lt;/SubjectInfo&gt;<br>　&lt;TransactionInfo&gt; 关联交易笔数 / 累计金额 / 可疑特征代码（如：1021 分拆交易规避大额申报）&lt;/TransactionInfo&gt;<br>　&lt;AnalysisInfo&gt; 可疑特征描述 / 资金链路摘要 / 附件：回访记录、交易明细&lt;/AnalysisInfo&gt;<br>　&lt;AuditInfo&gt; 经办 / 复核 / 审批三级工号与岗位编号 / 授权方式与影像索引&lt;/AuditInfo&gt;<br>&lt;/Report&gt;</div>
+        <p style="margin-top:10px;font-size:12.5px;color:var(--muted);">报送链路：报文生成 → 前置校验（字段完整性 / 勾稽关系）→ 专线加密通道 → 人民银行反洗钱监测分析中心（CAMLMAC）→ 回执接收 → 回执与报文、授权影像打包归档（保存期 ≥5 年，交易记录按法定 10 年）。</p>
+      </div>
+      <div class="card"><h3>授权与归档设计要点（产品视角）</h3>
+        <ul style="padding-left:18px;line-height:2;font-size:13px;">
+          <li><b>多因子授权适配不同场景：</b>柜面/网点用员工卡刷卡，远程办公用指纹或授权码，敏感大案加验 CA 数字证书——便利与安全按风险分层。</li>
+          <li><b>授权即留痕：</b>工号、岗位编号、授权方式、时间戳、设备信息五要素一次采集，不可篡改；纸质签字页扫描件与授权影像关联存储。</li>
+          <li><b>回执驱动闭环：</b>报送以 CAMLMAC 回执为准，未获回执自动挂起重推；回执编号回写流转看板，形成"内部流转 → 监管确认"的完整证据链。</li>
+          <li><b>降本设计：</b>参考上海农商银行实践，RPA 自动补录大额报文要素可节省约 1/3 人工时间；授权影像自动归档替代人工整理。</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="footer-note">清源 AML · 反洗钱智能监测平台 —— 个人产品作品（PRD + 交互 Demo）｜ 独立完成：需求洞察、产品设计、PRD 撰写、原型制作 ｜ 数据均为虚构</div>
+  </main>
+</div>
+
+<!-- 报文预览 / 签字模态 -->
+<div id="doc-mask" onclick="if(event.target===this)docClose()">
+  <div class="doc">
+    <h2 id="doc-title">可疑交易报告（STR）</h2>
+    <div class="doc-sub" id="doc-meta"></div>
+    <div class="lang-tabs"><span class="lang-tab on" id="dlt-tbl" onclick="docLang('tbl')">要素对照表（62 项）</span><span class="lang-tab" id="dlt-cn" onclick="docLang('cn')">报告正文（中）</span><span class="lang-tab" id="dlt-en" onclick="docLang('en')">Report (EN)</span></div>
+    <div id="doc-tbl"></div>
+    <pre id="doc-cn" style="display:none"></pre>
+    <pre id="doc-en" style="display:none"></pre>
+    <div class="doc-foot">
+      <div>复核人：冯宇（反洗钱专岗）<br><span style="color:var(--muted);font-size:12px;">日期：2026-10-07（演示）</span></div>
+      <div class="sign-slot" id="doc-sign"><span class="sign-hint">（待人工签字确认）</span></div>
+    </div>
+    <div class="doc-actions">
+      <button class="btn ghost small" onclick="docPrint()">🖨 打印确认</button>
+      <button class="btn primary small" id="doc-sign-btn" onclick="docSign()">✍ 人工复核签字确认</button>
+      <button class="btn ghost small" onclick="docClose()">关闭</button>
+      <span style="font-size:12px;color:var(--muted);align-self:center;">签字确认后报告转入报送队列，AI 版与人工修订版双版本存档</span>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ================= 演示数据 ================= */
+/* 人民银行令〔2016〕第 3 号 附件《金融机构大额交易和可疑交易报告要素内容》
+   银行业金融机构可疑交易报告要素内容列表 —— 共 62 项，四部分：
+   一、报告机构信息 1-3（3 项）｜二、可疑主体信息 4-16（13 项）
+   三、报告基本信息 17-24（8 项）｜四、交易信息 25-62（38 项） */
+const STR_ELEMS=[
+  [1,1,"报告机构编码"],[2,1,"网点代码"],[3,1,"金融机构与客户的关系"],
+  [4,2,"可疑主体姓名/名称"],[5,2,"可疑主体身份证件/证明文件类型"],[6,2,"可疑主体身份证件/证明文件号码"],[7,2,"客户号"],
+  [8,2,"可疑主体职业（对私）或行业（对公）"],[9,2,"可疑主体联系方式"],
+  [10,2,"可疑主体法定代表人姓名"],[11,2,"可疑主体法定代表人身份证件类型"],[12,2,"可疑主体法定代表人身份证件号码"],
+  [13,2,"可疑主体控股股东或实际控制人名称"],[14,2,"控股股东或实际控制人身份证件/证明文件类型"],[15,2,"控股股东或实际控制人身份证件/证明文件号码"],
+  [16,2,"可疑主体国籍"],
+  [17,3,"报告紧急程度"],[18,3,"报送次数标志"],[19,3,"报送方向"],[20,3,"可疑交易报告触发点"],
+  [21,3,"资金交易及客户行为情况"],[22,3,"疑点分析"],[23,3,"疑似涉罪类型"],[24,3,"可疑交易特征代码"],
+  [25,4,"客户姓名/名称"],[26,4,"客户身份证件/证明文件类型"],[27,4,"客户身份证件/证明文件号码"],
+  [28,4,"账户类型"],[29,4,"客户开户时间"],[30,4,"客户销户时间"],[31,4,"账号"],[32,4,"银行卡类型"],[33,4,"银行卡号码"],
+  [34,4,"代办人姓名"],[35,4,"代办人身份证件/证明文件类型"],[36,4,"代办人身份证件/证明文件号码"],[37,4,"代办人国籍"],
+  [38,4,"交易时间"],[39,4,"交易发生地"],[40,4,"业务标识号"],[41,4,"收付款方匹配号类型"],[42,4,"收付款方匹配号"],
+  [43,4,"交易方式"],[44,4,"涉外收支交易分类与代码"],[45,4,"资金收付标志"],[46,4,"资金来源和用途"],
+  [47,4,"币种"],[48,4,"交易金额"],
+  [49,4,"对方金融机构网点名称"],[50,4,"对方金融机构网点代码类型"],[51,4,"对方金融机构网点代码"],[52,4,"对方金融机构网点行政区划代码"],
+  [53,4,"交易对手姓名/名称"],[54,4,"交易对手身份证件/证明文件类型"],[55,4,"交易对手身份证件/证明文件号码"],
+  [56,4,"交易对手账户类型"],[57,4,"交易对手账号"],
+  [58,4,"非柜台交易方式"],[59,4,"非柜台交易方式的设备代码"],[60,4,"银行与支付机构之间的业务交易编码"],
+  [61,4,"交易信息备注1"],[62,4,"交易信息备注2"]
+];
+const STR_PART={1:"第一部分 · 报告机构信息（第 1–3 项）",2:"第二部分 · 可疑主体信息（第 4–16 项）",3:"第三部分 · 报告基本信息（第 17–24 项）",4:"第四部分 · 交易信息（第 25–62 项）"};
+
+const ALERTS = [
+  { id:"AL20261007-001", cust:"李某某（个人，34 岁，个体工商户）", rule:"R002 分拆交易规避大额申报", amt:"¥686,000", score:92, level:"red", levelTxt:"高风险", status:"待处理",
+    custInfo:{ 职业:"个体工商户（建材零售）", 开户:"2019.03，网点柜面开户", 风险等级:"<span class='tag amber'>中</span> → 本次触发升级为 <span class='tag red'>高</span>", 关联账户:"1 个借记卡 + 1 个活期", 既往预警:"近 2 年 0 次" },
+    timeline:[["10-01 09:42","现金存入 ¥49,800"],["10-01 10:15","现金存入 ¥49,200"],["10-02 14:03","现金存入 ¥49,900"],["10-03 09:31","现金存入 ¥49,500"],["10-05 15:47","单日 4 笔合计 ¥196,000"],["10-06 16:20","一次性转出 ¥620,000 至陌生对公账户"]],
+    ruleExplain:"7 日内累计 14 笔现金存入，其中 12 笔单笔金额落在 ¥49,000–49,900（恰为 5 万元申报阈值下方 1%–2%），合计 ¥686,000，随后 24 小时内一次性转出 90%。典型“化整为零”规避大额现金交易申报特征。",
+    aiSummary:"交易链路呈现清晰的<strong>分拆-归集-转出</strong>三段结构：① 存入节奏刻意控制单笔金额贴近阈值下方，离散度极小（σ≈¥262），人工随意存入几乎不可能出现该分布；② 资金归集后转出对象为一家成立仅 4 个月的贸易公司，与其建材零售经营范围无业务关联；③ 该客户既往 2 年无任何预警记录，属<strong>行为突变型</strong>风险，与长期风险客户相比更值得关注。",
+    aiAdvice:"建议：① 转人工电话回访核实资金来源与用途（话术要点已生成）；② 暂缓该账户非柜面渠道限额提升申请；③ 若回访解释与资金流不匹配，48 小时内走 STR 报送流程。",
+    strDraft:"一、客户基本情况：李某某，34 岁，个体工商户，2019 年 3 月在我行开户，开户用途登记为经营收款。\n二、可疑交易情况：2026 年 10 月 1 日至 10 月 6 日，该客户累计存入现金 14 笔合计 68.6 万元，其中 12 笔单笔金额集中于 4.9 万元至 4.99 万元区间，明显规避当日 5 万元大额现金交易申报标准；10 月 6 日将其中 62 万元一次性转出至无业务关联的第三方对公账户。\n三、分析判断：客户登记经营范围为建材零售，但其资金呈“小额多笔现金存入、快速归集转出”特征，与其经营流水、行业惯例明显不符，且无法合理解释资金来源。\n四、处置情况：已开展人工回访，账户已加强监测。（本段为 AI 依据交易数据生成的初稿，需专岗核实修订后报送）",
+    en:"I. Basic customer information: Mr. Li (pseudonym), male, 34, self-employed in building-materials retail; account opened in March 2019 at a branch counter for business receipt purposes.\nII. Suspicious transactions: From Oct 1 to Oct 6, 2026, the customer made 14 cash deposits totalling CNY 686,000, of which 12 fell between CNY 49,000 and 49,900 — immediately below the CNY 50,000 daily large-value cash reporting threshold, showing a pattern of structuring to evade reporting. On Oct 6, CNY 620,000 was transferred in a single transaction to an unrelated third-party corporate account.\nIII. Analysis: The funds pattern (split cash deposits followed by rapid aggregation and outward transfer) is materially inconsistent with the customer's registered business profile; the source and intended use of funds cannot be reasonably explained.\nIV. Disposition: Customer outreach conducted; enhanced monitoring applied to the account.\n(This draft was generated by AI based on transaction data and shall be verified and revised by the AML officer before filing.)",
+    conf:88,
+    s62:{
+      1:"B0032NJ0101（15 位金融机构编码）",
+      2:"NJ0101 · ××银行西宁××支行营业部",
+      3:"个人银行结算账户业务关系（2019-03 至今）",
+      4:"李某某",5:"居民身份证",6:"6321**********1234",7:"C2019031200087",
+      8:"个体工商户（建材零售）",
+      9:"138****6621；青海省西宁市城西区××路××号",
+      16:"中国",
+      17:"01 非特别紧急",
+      18:"1（初次报告）",
+      19:"01 报告中国反洗钱监测分析中心",
+      20:"01 模型筛选",
+      21:"2026-10-01 至 10-06，客户在本行网点柜面累计现金存入 14 笔、合计 686,000 元，单笔金额集中于 49,000–49,900 元；10-06 16:20 一次性转出 620,000 元至一家成立仅 4 个月的异地贸易公司账户。该户月均流水约 8.6 万元，本笔规模达其月均流水的 8 倍；账户此前 2 年无预警记录。",
+      22:"① 12 笔单笔金额落在当日 5 万元现金申报标准下方 1%–2%，金额离散度极小（σ≈262 元），不符合自然人经营收款的随机分布；② 收款方与客户登记经营范围无业务关联，无购销合同与发票支撑；③ 客户近 2 年无预警记录，本笔属行为突变而非长期风险；④ 电话回访中客户称朋友借款，未能提供借款凭证，无法说明资金来源。",
+      23:"0801 涉嫌明知有七类洗钱上游犯罪的掩饰、隐瞒犯罪所得、犯罪收益的可疑交易行为",
+      24:"R002（本机构报备代码 0102 · 分拆交易规避大额申报）",
+      25:"李某某",26:"居民身份证",27:"6321**********1234",
+      28:"个人银行结算账户（Ⅰ 类户）",29:"2019-03-12",30:"—（未销户）",
+      31:"6222**********8823",32:"借记卡",33:"6222**********8823",
+      38:"2026-10-01 至 2026-10-06（现金存入 14 笔；转出 1 笔）",
+      39:"青海省西宁市（网点柜面 / 网上银行）",
+      40:"BUS202610060001620",41:"01 交易流水号",42:"TR20261006001620",
+      43:"现金存款 / 转账",44:"—（非涉外收支）",45:"收（存入）/ 付（转出）",
+      46:"经营收款（客户申报）/ 未见对应购销凭证",47:"人民币 CNY",
+      48:"CNY 686,000.00（累计存入）；CNY 620,000.00（单笔转出）",
+      49:"××银行 ×× 分行营业部",50:"01 人民银行金融机构代码",51:"B0032NJ0XXX",52:"630104",
+      53:"××贸易有限公司",54:"统一社会信用代码",55:"91**************7X",56:"对公基本存款账户",57:"1010**********4396",
+      58:"柜面现金 / 网上银行（非柜台）",59:"—（柜面交易无设备代码）",60:"—（非银行与支付机构间交易）",
+      61:"① 2026-10-06 电话回访记录：客户称朋友借款，未提供凭证；② 14 笔现金存入交易明细已附；③ 客户风险等级由“中”上调为“高”，调整依据与审批人已留痕。",
+      62:"—"
+    },
+    s62ai:[21,22],
+    s62na:[10,11,12,13,14,15] },
+  { id:"AL20261007-002", cust:"陈某某（对公，××贸易）", rule:"R007 公私账户高频互转（空壳特征）", amt:"¥1,240,000", score:85, level:"red", levelTxt:"高风险", status:"待处理",
+    custInfo:{ 职业对公:"贸易公司，成立 4 个月", 开户:"2026.06，非面对面渠道开户", 风险等级:"<span class='tag red'>高</span>", 关联账户:"基本户 + 2 个一般户", 既往预警:"开户以来第 2 次" },
+    timeline:[["09-28","法人个人账户转入公司基本户 ¥300,000"],["09-29","收到异地个人汇款 3 笔合计 ¥520,000"],["09-30","转出至 2 家外地公司 ¥700,000"],["10-02","公转私 ¥180,000，摘要“备用金”"],["10-05","公转私 ¥260,000，摘要“往来款”"]],
+    ruleExplain:("公司成立 4 个月、无社保缴纳记录、无增值税开票记录，账户月公私互转 23 笔，交易摘要高度模板化，无与“贸易”经营范围匹配的购销流水——具备典型空壳公司账户特征。").replace(/\s/g,""),
+    aiSummary:"该公司画像与资金行为严重背离：<strong>注册资本 500 万但实缴 0，无经营流水，却月均过账 350 万</strong>。资金路径呈“个人进 → 壳公司中转 → 异地公司出”的过账特征，交易对手分散且多地跳跃，符合账户出借 / 走款通道模式。建议优先排查其上游 3 个异地个人汇款方是否关联。",
+    aiAdvice:"建议：① 立即启动对公客户实地尽调（EDD），核实经营场所与人员；② 调降非柜面支付限额并上报分行反洗钱岗；③ 同步对其法人个人账户开启关联监测。",
+    strDraft:"一、客户基本情况：××贸易有限公司，成立 4 个月，注册资本 500 万元（实缴 0），主要从事登记为国内贸易。\n二、可疑交易情况：2026 年 9 月 28 日至 10 月 5 日，公司账户累计收到法人及异地个人转入 82 万元，转出至异地公司及法人个人账户合计 114 万元，公私账户互转频繁，无与经营范围相符的购销合同及发票流。\n三、分析判断：公司无实际经营迹象，账户呈现明显的资金中转特征，存在被用于非法资金转移的风险。\n四、处置情况：已启动强化尽职调查，账户非柜面渠道限额已调降。（AI 初稿，需人工核实修订）",
+    conf:82,
+    s62:{
+      1:"B0032NJ0101（15 位金融机构编码）",
+      2:"NJ0103 · ××银行西宁××支行对公业务部",
+      3:"对公人民币结算账户业务关系（2026-06 至今）",
+      4:"××贸易有限公司",5:"统一社会信用代码",6:"91**************7X",7:"C2026061800321",
+      8:"F51 批发业（登记经营范围：国内贸易）",
+      9:"138****3390；××市××区××商务楼 12B",
+      10:"陈某某",11:"居民身份证",12:"6321**********5678",
+      13:"陈某某（持股 100%）",14:"居民身份证",15:"6321**********5678",
+      16:"中国",
+      17:"01 非特别紧急",
+      18:"2（追加报告：与本机构 2026-09 初次报告为同一可疑主体、同一涉罪类型）",
+      19:"02 报告中国反洗钱监测分析中心和人民银行当地分支机构",
+      20:"01 模型筛选",
+      21:"公司 2026-06 经非面对面渠道开户，注册资本 500 万元、实缴 0；开户以来无增值税开票记录、无社保缴纳记录。2026-09-28 至 10-05 期间，账户收到法人个人账户转入 30 万元、异地个人汇款 3 笔合计 52 万元；同期转出至 2 家异地公司 70 万元、公转私 2 笔合计 44 万元（本期转出 114 万元，超出本期转入的 32 万元来源于 9 月留存余额）。该户月均过账约 350 万元，无与国内贸易经营范围匹配的购销流水。",
+      22:"① 公司画像与资金规模严重背离：成立 4 个月、实缴 0、无经营流水，却月均过账 350 万元；② 资金路径呈个人进、壳公司中转、异地公司出的过账特征，交易对手分散且多地跳跃；③ 交易摘要高度模板化（备用金、往来款），无对应业务凭证；④ 存在账户出借或被用作走款通道的风险，上游 3 个异地个人汇款方的关联性待查。",
+      23:"0802 涉嫌明知有其他上游犯罪的掩饰、隐瞒犯罪所得、犯罪收益的可疑交易行为",
+      24:"R007（本机构报备代码 0105 · 公私账户高频互转·空壳特征）",
+      25:"××贸易有限公司",26:"统一社会信用代码",27:"91**************7X",
+      28:"对公基本存款账户",29:"2026-06-18",30:"—（未销户）",
+      31:"1010**********4396",32:"—（对公账户无银行卡）",33:"—（对公账户无银行卡）",
+      34:"—（非柜面交易，无代办人）",35:"—",36:"—",37:"—",
+      38:"2026-09-28 至 2026-10-05（转入 4 笔 / 转出 4 笔）",
+      39:"网上银行（非面对面渠道）",
+      40:"BUS2026100500000931",41:"01 交易流水号",42:"TR20261005000931",
+      43:"转账",44:"—（非涉外收支）",45:"收 / 付",
+      46:"往来款、备用金（客户填写摘要）/ 未见对应合同与发票",47:"人民币 CNY",
+      48:"累计转入 CNY 820,000.00；累计转出 CNY 1,140,000.00",
+      49:"××银行 ×× 分行营业部；异地 ×× 银行 ×× 支行",50:"01 人民银行金融机构代码",51:"B0032NJ0XXX；B00XXSH0XXX",52:"630104；310115",
+      53:"陈某某（法定代表人）等 6 名对手方",54:"居民身份证 / 统一社会信用代码",55:"6321**********5678 等（脱敏，详见附录）",56:"个人银行结算账户 / 对公账户",57:"6222**********1102 等",
+      58:"网上银行（非柜台）",59:"—（未采集）",60:"—（非银行与支付机构间交易）",
+      61:"① 已启动对公客户实地尽调（EDD）工单，核查经营场所与人员；② 非柜面支付限额已调降；③ 法定代表人个人账户已开启关联监测；④ 上游 3 个异地个人汇款方的协查申请已提交。",
+      62:"—"
+    },
+    s62ai:[21,22],
+    s62na:[] },
+  { id:"AL20261007-003", cust:"MUHAMMAD ·（外文名，来华人员）", rule:"R005 制裁 / 涉恐名单命中", amt:"即时冻结", score:100, level:"red", levelTxt:"涉恐·最高级", status:"已冻结·待复核",
+    custInfo:{ 身份:"外国人来华工作签证", 开户:"2024.11", 风险等级:"<span class='tag red'>高</span>", 命中名单:"联合国安理会涉恐综合名单（音译变体）", 匹配置信度:"87%（模糊匹配）" },
+    timeline:[["10-07 08:12","开户资料年审触发名单重筛"],["10-07 08:12","系统命中：姓名音译变体相似度 87%"],["10-07 08:13","账户自动冻结（依据《反洗钱法》涉恐条款）"],["10-07 08:13","生成紧急上报工单，24 小时时限开始计时"]],
+    ruleExplain:"客户姓名音译与联合国安理会制裁名单条目高度相似（87%）。按产品规则：涉恐类命中不进普通队列，<strong>先冻结、后复核</strong>，避免任何时滞。",
+    aiSummary:"系统完成了姓名音译比对、国籍与证件类型交叉核验、出生日期差异比对三项初筛：<strong>出生日期与名单条目存在差异，存在同人误报可能（约 30%）</strong>。但依据“涉恐零时滞”原则，冻结维持有效，人工复核需在 24 小时时限内给出“确认 / 解除”结论并留痕。",
+    aiAdvice:"建议：① 24 小时内完成人工复核（比对要素清单已生成）；② 若确认误报，留存比对记录后解冻并向客户说明；③ 若确认命中，立即按涉恐资产冻结流程上报。",
+    strDraft:"（涉恐类命中走专项紧急报送模板，含冻结时点、依据条款、比对要素、复核结论四部分 —— 本条演示冻结与计时功能，报送模板从略）",
+    conf:87 },
+  { id:"AL20261006-011", cust:"王某某（个人，28 岁，公司职员）", rule:"R003 资金快进快出", amt:"¥3,800,000", score:78, level:"amber", levelTxt:"中高风险", status:"待处理",
+    custInfo:{ 职业:"普通公司职员（月薪 ¥12,000）", 开户:"2017.08", 风险等级:"<span class='tag amber'>中</span>", 既往预警:"近 1 年第 3 次" },
+    timeline:[["10-06 10:21","收到 4 个个人账户转入合计 ¥380 万"],["10-06 11:02–13:40","分 5 笔转出至 5 个不同账户"],["10-06 14:05","余额 ¥8,203，归零式出金"]],
+    ruleExplain:"月收入 1.2 万元的普通职员账户，当日过账 380 万元且 4 小时内归零，转入转出对手方无一重复——资金过账通道特征明显。",
+    aiSummary:"客户身份（普通职员）与交易规模（单日 380 万）<strong>偏离度达 300 倍</strong>，属“与身份明显不符”的可疑情形。交易呈现典型的分散转入-分散转出结构，本户在链路中仅承担中转节点角色。近 1 年 3 次同类预警，属<strong>累犯型账户</strong>，建议升级处置而非重复排除。",
+    aiAdvice:"建议：① 本次直接走 STR 报送（历史排除理由“朋友间借款”已不成立）；② 账户降级非柜面限额；③ 触发客户风险等级上调流程。",
+    strDraft:"一、客户基本情况：王某某，28 岁，某公司职员，月收入约 1.2 万元，2017 年开户。\n二、可疑交易情况：10 月 6 日该账户收到 4 名个人转入合计 380 万元，于 4 小时内分 5 笔转出至 5 个不同账户，账户余额归零。客户为普通职员，交易规模与其身份收入明显不符。\n三、分析判断：账户呈现资金中转通道特征，近一年已多次触发同类预警，此前客户解释难以成立。\n四、处置情况：已报送可疑交易报告并调降账户限额。（AI 初稿，需人工核实修订）",
+    conf:76,
+    s62:{
+      1:"B0032NJ0101（15 位金融机构编码）",
+      2:"NJ0107 · ××银行西宁××支行营业部",
+      3:"个人银行结算账户业务关系（2017-08 至今）",
+      4:"王某某",5:"居民身份证",6:"6321**********9012",7:"C2017082200455",
+      8:"公司职员（申报月收入 12,000 元）",
+      9:"139****7788；青海省西宁市城中区××小区",
+      16:"中国",
+      17:"01 非特别紧急",
+      18:"1（初次报告）",
+      19:"01 报告中国反洗钱监测分析中心",
+      20:"01 模型筛选",
+      21:"2026-10-06 10:21 起，账户收到 4 名个人分别转入共计 3,800,000 元；同日 11:02–13:40 分 5 笔转出至 5 个不同账户，14:05 账户余额 8,203 元，归零式出金。转入方与转出方无一个重复，本户在资金链路中仅承担中转节点角色。该客户近 1 年已 3 次触发同类预警，上次排除理由为朋友间借款。",
+      22:"① 客户申报月收入 1.2 万元，单日过账 380 万元，规模与身份偏离约 300 倍；② 当日 4 小时内资金几乎全额转出（转出率 99.8%），无沉淀、无消费、无理财动作，不符合正常个人资金使用习惯；③ 转入方与转出方零重复，呈典型分散转入—分散转出过账结构；④ 近 1 年 3 次同类预警，此前排除理由在本次资金规模下已不成立。",
+      23:"0802 涉嫌明知有其他上游犯罪的掩饰、隐瞒犯罪所得、犯罪收益的可疑交易行为",
+      24:"R003（本机构报备代码 0103 · 资金快进快出）",
+      25:"王某某",26:"居民身份证",27:"6321**********9012",
+      28:"个人银行结算账户（Ⅰ 类户）",29:"2017-08-22",30:"—（未销户）",
+      31:"6222**********7741",32:"借记卡",33:"6222**********7741",
+      38:"2026-10-06（转入 4 笔 / 转出 5 笔）",39:"网上银行（非柜台）",
+      40:"BUS2026100600000412",41:"01 交易流水号",42:"TR20261006000412",
+      43:"转账",44:"—（非涉外收支）",45:"收 / 付",
+      46:"转入摘要：借款；转出摘要：货款、往来款 / 均未见对应凭证",47:"人民币 CNY",
+      48:"累计转入 CNY 3,800,000.00；累计转出 CNY 3,791,797.00",
+      49:"××银行 ×× 分行营业部",50:"01 人民银行金融机构代码",51:"B0032NJ0XXX",52:"630103",
+      53:"转入方 4 人 / 转出方 5 人（无重复，详见附录）",54:"居民身份证",55:"6321**********×××× 等（脱敏，详见附录）",56:"个人银行结算账户",57:"6222**********×××× 等",
+      58:"网上银行（非柜台）",59:"—（未采集）",60:"—（非银行与支付机构间交易）",
+      61:"① 本次直接进入 STR 报送流程，历史排除理由不再沿用；② 账户非柜面限额已调降；③ 已触发客户风险等级上调流程（中 → 高）。",
+      62:"—"
+    },
+    s62ai:[21,22],
+    s62na:[10,11,12,13,14,15] },
+  { id:"AL20261006-009", cust:"周某某（个人，52 岁）", rule:"R004 夜间高频交易", amt:"¥214,000", score:64, level:"amber", levelTxt:"中风险", status:"待处理",
+    custInfo:{ 职业:"自由职业", 开户:"2015.02", 风险等级:"<span class='tag green'>低</span> → 待复评", 既往预警:"0 次" },
+    timeline:[["10-02 至 10-05 连续 4 夜","00:30–04:00 间扫码支付 31 笔"],["累计","¥214,000，对手方为同一商户类目（网络娱乐）"]],
+    ruleExplain:"连续 4 个夜间 0 点至 5 点高频支付，对手方集中于同一高风险类目商户，累计金额达其账户月均流水的 6 倍。",
+    aiSummary:"交易时间分布极端（100% 集中于深夜）、商户类目单一、金额阶梯式上升——符合网络赌博 / 娱乐平台充值特征。但单笔金额小、对手方为持牌商户，<strong>确定性中等</strong>，建议先回访后定性。",
+    aiAdvice:"建议：① 短信 + 电话双通道风险提示与回访；② 7 日内跟踪，若持续则纳入 STR。",
+    strDraft:"（等待回访结论后生成 —— AI 已预填客户与交易要素部分）",
+    conf:61 },
+  { id:"AL20261005-006", cust:"孙某某（个人，41 岁）", rule:"R006 新开户短期大额跨境", amt:"¥260,000", score:71, level:"amber", levelTxt:"中风险", status:"AI 已预诊断",
+    custInfo:{ 职业:"留学中介客户群", 开户:"2026.09（新开户）", 风险等级:"<span class='tag amber'>中</span>", 既往预警:"0 次" },
+    timeline:[["09-12","开户，登记用途：子女留学缴费"],["09-20","购汇 ¥260,000 汇出境外教育类收款人"]],
+    ruleExplain:"开户 30 天内发生大额跨境汇款，需核实用途登记与实际资金用途的一致性。",
+    aiSummary:"收款人为境外院校、金额与学费标准吻合、购汇用途申报一致，<strong>业务合理度较高（AI 评估：低可疑）</strong>。此类预警提示现有规则对“留学缴费”场景缺少白名单化处理，属规则迭代候选点。",
+    aiAdvice:"建议：① 补录录取通知书 / 缴费凭证后可排除；② 产品层建议增加“留学缴费”材料线上提交通道，从源头压降此类低价值预警。",
+    strDraft:"（AI 评估为低可疑，暂不生成）",
+    conf:40 },
+  { id:"AL20261004-003", cust:"吴某（个人，37 岁）", rule:"R008 涉虚拟货币交易特征", amt:"¥890,000", score:80, level:"red", levelTxt:"高风险", status:"待处理",
+    custInfo:{ 职业:"自称“互联网自由职业”", 开户:"2020.05", 风险等级:"<span class='tag amber'>中</span>", 既往预警:"近半年第 2 次" },
+    timeline:[["09-28 至 10-03","收到 12 个个人账户分散转入 ¥89 万"],["10-04","集中转出至 2 个账户"],["特征","交易对手聊天记录关键词命中（监管协查反馈）"]],
+    ruleExplain:"资金呈分散转入-集中转出结构，对手方含已被外省公安机关标记的场外兑换特征账户。",
+    aiSummary:"对手方网络含已标记的场外兑换特征账户，结合分散转入-集中转出结构，<strong>虚拟货币场外兑换资金通道特征明显</strong>。此类资金常与电信网络诈骗洗钱关联，建议高优先级处置。",
+    aiAdvice:"建议：① 直接走 STR 报送；② 账户暂停非柜面业务；③ 上报分行反洗钱岗并同步反诈条线。",
+    strDraft:"一、客户基本情况：吴某，37 岁，自述从事互联网相关工作，无固定收入流水。\n二、可疑交易情况：9 月 28 日至 10 月 4 日，收到 12 个个人账户分散转入合计 89 万元，次日集中转出。经核查，部分交易对手存在场外兑换特征。\n三、分析判断：资金流转特征与虚拟货币场外兑换通道高度吻合，存在为上游非法活动转移资金的风险。\n四、处置情况：已报送并暂停账户非柜面业务。（AI 初稿，需人工核实修订）",
+    conf:79,
+    s62:{
+      1:"B0032NJ0101（15 位金融机构编码）",
+      2:"NJ0212 · ××银行西宁××支行营业部",
+      3:"个人银行结算账户业务关系（2020-05 至今）",
+      4:"吴某",5:"居民身份证",6:"6321**********3344",7:"C2020051600912",
+      8:"自称互联网自由职业（无固定收入流水）",
+      9:"13***********；青海省西宁市××区××路",
+      16:"中国",
+      17:"01 非特别紧急",
+      18:"1（初次报告）",
+      19:"02 报告中国反洗钱监测分析中心和人民银行当地分支机构",
+      20:"01 模型筛选",
+      21:"2026-09-28 至 10-03，账户收到 12 个不同个人账户分散转入合计 890,000 元；10-04 集中转出至 2 个账户。经核查，部分交易对手方已被外省公安机关标记为场外兑换特征账户。该客户近半年已 2 次触发同类预警。",
+      22:"① 分散转入—集中转出结构与虚拟货币场外兑换资金通道特征高度吻合；② 对手方网络含已被公安机关标记的场外兑换特征账户；③ 客户自述互联网自由职业但无对应收入流水，资金来源无法合理解释；④ 该类资金常与电信网络诈骗洗钱关联，风险等级高。",
+      23:"1201 涉嫌诈骗（电信诈骗）的可疑交易行为",
+      24:"R008（本机构报备代码 0112 · 涉虚拟货币交易特征）",
+      25:"吴某",26:"居民身份证",27:"6321**********3344",
+      28:"个人银行结算账户（Ⅰ 类户）",29:"2020-05-16",30:"—（未销户）",
+      31:"6222**********5518",32:"借记卡",33:"6222**********5518",
+      38:"2026-09-28 至 2026-10-04（转入 12 笔 / 转出 2 笔）",39:"网上银行（非柜台）",
+      40:"BUS2026100400000765",41:"01 交易流水号",42:"TR20261004000765",
+      43:"转账",44:"—（非涉外收支）",45:"收 / 付",
+      46:"往来款（摘要）/ 未见对应业务背景",47:"人民币 CNY",
+      48:"累计转入 CNY 890,000.00；累计转出 CNY 887,300.00",
+      49:"××银行 ×× 分行营业部",50:"01 人民银行金融机构代码",51:"B0032NJ0XXX",52:"630105",
+      53:"12 名转入对手方 / 2 名转出对手方",54:"居民身份证",55:"6321**********×××× 等（脱敏，详见附录）",56:"个人银行结算账户",57:"6222**********×××× 等",
+      58:"网上银行（非柜台）",59:"—（未采集）",60:"—（非银行与支付机构间交易）",
+      61:"① 已报送并暂停账户非柜面业务；② 已上报分行反洗钱岗并同步反诈条线；③ 外省公安机关标记账户的协查材料已作为附件提交。",
+      62:"—"
+    },
+    s62ai:[21,22],
+    s62na:[10,11,12,13,14,15] },
+  { id:"AL20261003-002", cust:"郑某某（对公，××科技）", rule:"R003 资金快进快出", amt:"¥150,000", score:35, level:"green", levelTxt:"低风险", status:"已排除",
+    custInfo:{ 职业:"软件公司", 开户:"2021.03", 风险等级:'<span class="tag green">低</span>', 既往预警:"0 次" },
+    timeline:[["10-03","收到软件服务款 ¥150,000，次日支付供应商 ¥128,000"]],
+    ruleExplain:"触发快进快出规则，但交易对手为其长期供应商，合同、发票齐全。",
+    aiSummary:"AI 比对了该客户近 24 个月交易基线：收款人与经营范围一致、付款对象为固定供应商、金额处于历史正常区间。<strong>误报，置信度 91%</strong>。",
+    aiAdvice:"系统建议排除并自动归档排除理由，供监管检查留痕。",
+    strDraft:"（已排除，无报送需求）",
+    conf:91 }
+];
+
+/* ================= 导航 ================= */
+document.querySelectorAll('.nav a').forEach(a=>{
+  a.addEventListener('click',()=>showPage(a.dataset.page));
+});
+function showPage(id){
+  document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.page===id||(id==='detail'&&a.dataset.page==='alerts')));
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+id));
+  window.scrollTo(0,0);
+}
+function toast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),2200);
+}
+function toggle(el){el.classList.toggle('on');toast(el.classList.contains('on')?'规则已启用（操作已留痕）':'规则已停用（操作已留痕）');}
+function fillScan(v){document.getElementById('scan-input').value=v;runScan();}
+
+/* ================= 预警列表 ================= */
+function renderAlerts(){
+  document.getElementById('alert-rows').innerHTML = ALERTS.map((a,i)=>`
+    <tr class="clickable" onclick="openDetail(${i})">
+      <td class="mono">${a.id}</td>
+      <td>${a.cust}</td>
+      <td>${a.rule}</td>
+      <td>${a.amt}</td>
+      <td><b style="color:var(--${a.level});font-size:15px;">${a.score}</b><span style="color:var(--muted);font-size:11px;"> /100</span><br><span class="tag ${a.level}">${a.levelTxt}</span></td>
+      <td><span class="tag ${a.status.includes('排除')?'gray':(a.status.includes('AI')?'blue':'amber')}">${a.status}</span></td>
+    </tr>`).join('');
+}
+function openDetail(i){
+  const a=ALERTS[i];
+  const kv = Object.entries(a.custInfo).map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('');
+  document.getElementById('page-detail').innerHTML = `
+    <div class="detail-header">
+      <button class="btn ghost small" onclick="showPage('alerts')">← 返回列表</button>
+      <h2>${a.id}</h2>
+      <span class="tag ${a.level}">${a.levelTxt}</span>
+      <span class="tag gray">AI 风险分 ${a.score}/100</span>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>客户信息</h3><dl class="kv">${kv}</dl></div>
+      <div class="card"><h3>触发规则解释 <small>产品要求：每条预警必须可解释</small></h3>
+        <p style="font-size:13px;line-height:1.9;">${a.ruleExplain}</p>
+      </div>
+    </div>
+    <div class="card"><h3>交易时间线</h3><ul class="tl">${a.timeline.map((t,i)=>`<li class="${i===a.timeline.length-1?'hot':''}"><div class="t">${t[0]}</div><div class="d">${t[1]}</div></li>`).join('')}</ul></div>
+    <div class="card ai-box">
+      <div class="ai-head"><span class="ai-badge">AI 智能诊断</span><small>大模型对预警的独立研判 · 仅供人工复核参考 · 诊断过程留痕</small></div>
+      <p>${a.aiSummary}</p>
+      <div class="confidence">AI 结论置信度 <div class="conf-track"><div class="conf-fill" style="width:${a.conf}%"></div></div> ${a.conf}%</div>
+      <div class="sec">处置建议</div><p>${a.aiAdvice}</p>
+      <div class="sec">可疑交易报告（STR）· 62 项官方要素</div>
+      <div id="str-wrap-${i}">
+        <button class="btn ghost small" onclick="genStr(${i})">⚡ 一键生成 STR 初稿</button>
+        <span style="font-size:12px;color:var(--muted);margin-left:8px;">按人行 3 号令附件 62 项要素逐项填充（系统带出 60 项 + AI 生成 2 项），专岗核实修订后报送</span>
+      </div>
+    </div>
+    <div class="card" style="display:flex;align-items:center;gap:6px;">
+      <span style="color:var(--muted);font-size:13px;margin-right:14px;">处置结论（必填，全程留痕）：</span>
+      <button class="btn primary" onclick="handle(${i},'上报')">确认可疑 · 走 STR 报送</button>
+      <button class="btn ghost" onclick="handle(${i},'排除')">人工排除（附理由）</button>
+      <button class="btn ghost" onclick="handle(${i},'回访')">先回访核实</button>
+    </div>`;
+  showPage('detail');
+}
+function genStr(i){
+  const a=ALERTS[i];
+  document.getElementById('str-wrap-'+i).innerHTML=strBlock(a,'d'+i)+`
+    <div style="margin:10px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <button class="btn primary small" onclick="openDoc(${i},'tbl')">📄 报告预览 / 签字确认</button>
+      <span style="font-size:12px;color:var(--muted);">English 版用于涉外案例 / 跨境协查报送场景</span>
+    </div>
+    <div style="margin-top:4px;"><span class="tag purple">AI 生成版本已存档</span> <span style="font-size:12px;color:var(--muted);margin-left:8px;">人工修订后将保留双版本对照，满足监管追责要求</span></div>`;
+  toast('STR 初稿已生成：62 项官方要素对照表单 + 中英双语正文');
+}
+function enFallback(a){
+  return "I. Basic customer information: "+a.cust.replace(/<[^>]+>/g,'').replace(/（/g,' (').replace(/）/g,') ')+".\n"
+    +"II. Suspicious transactions: Triggered by rule ["+a.rule+"], suspicious amount "+a.amt+". Key transactions: "+a.timeline.slice(0,3).map(t=>t[0]+" "+t[1]).join("; ")+".\n"
+    +"III. Analysis: The transaction pattern deviates materially from the customer's risk profile and expected behaviour; the source of funds cannot be reasonably explained.\n"
+    +"IV. Disposition: Case reviewed by the AML officer; report filed in accordance with the AML Law of the PRC and PBOC Order No. 3.\n"
+    +"(AI-generated English draft; subject to human verification and revision.)";
+}
+function handle(i,act){
+  const a=ALERTS[i];
+  if(act==='上报') toast('已提交：STR 报送流程启动，时限监控开启（演示）');
+  if(act==='排除') toast('已排除并记录理由，供监管检查留痕（演示）');
+  if(act==='回访') toast('回访工单已创建，7 日跟踪期开始（演示）');
+}
+
+/* ================= STR 62 项要素对照表单 ================= */
+function strFormHTML(a){
+  const v=a.s62||{},ai=a.s62ai||[],na=a.s62na||[];
+  let auto=0,aic=0,todo=0,nac=0,rows='',cur=0,todoList=[];
+  STR_ELEMS.forEach(function(e){
+    const n=e[0],p=e[1],name=e[2];
+    if(p!==cur){cur=p;rows+='<tr class="str-part"><td colspan="3">'+STR_PART[p]+'</td></tr>';}
+    let val=v[n],cls,tag='';
+    if(na.indexOf(n)>=0){cls='na';val='—（本笔不适用）';nac++;}
+    else if(val===undefined){cls='todo';val='待人工补充';tag='<span class="str-tag todo">待补充</span>';todo++;todoList.push('第 '+n+' 项 '+name);}
+    else if(ai.indexOf(n)>=0){cls='ai';tag='<span class="str-tag ai">AI 生成</span>';aic++;}
+    else{cls='auto';tag='<span class="str-tag auto">系统带出</span>';auto++;}
+    rows+='<tr class="str-row '+cls+'"><td class="str-n">'+n+'</td><td class="str-name">'+name+'</td><td class="str-val">'+val+tag+'</td></tr>';
+  });
+  return '<div class="str-head"><div><div class="t">可疑交易报告要素对照表 · 银行业 62 项</div>'
+    +'<div class="s">依据：人民银行令〔2016〕第 3 号 附件《金融机构大额交易和可疑交易报告要素内容》 —— 报告机构信息 3 ＋ 可疑主体信息 13 ＋ 报告基本信息 8 ＋ 交易信息 38</div></div>'
+    +'<div class="str-cnt"><b>要素完成度 '+((auto+aic))+' / '+STR_ELEMS.length+'</b>'
+    +'<em class="c-auto">系统带出 '+auto+'</em><em class="c-ai">AI 生成 '+aic+'</em>'
+    +'<em class="c-todo">待人工补充 '+todo+'</em><em class="c-na">本笔不适用 '+nac+'</em></div></div>'
+    +'<div class="str-box"><table><tr><th style="width:40px;text-align:center;">编号</th><th style="width:216px;">要素名称</th><th>本期取值</th></tr>'+rows+'</table></div>'
+    +'<div class="str-note">三种来源：<b style="color:#4338ca">系统带出</b>（从客户信息 / 交易流水 / 规则引擎结论直接取数，人工不重复录入）· <b style="color:#7e22ce">AI 生成</b>（仅第 21、22 项这类判断性内容，须专岗逐项校验并可修改）· <b style="color:var(--amber)">待人工补充</b>（系统取不到、必须由办理网点或反洗钱专岗填写，未补完不允许提交）。62 项中带判断性的只有 2 项，AI 的作用范围被严格限定在此。'
+    +(todo? '<br><b style="color:var(--amber)">本笔待补 '+todo+' 项：</b>'+todoList.join('、')+'。' : '')
+    +'</div>';
+}
+function strBlock(a,uid){
+  const pre='style="white-space:pre-wrap;background:#fff;border:1px dashed #c7d2fe;border-radius:8px;padding:14px 16px;font-size:12.5px;line-height:1.9;font-family:inherit;display:none;"';
+  if(!a.s62){
+    return '<pre style="white-space:pre-wrap;background:#fff;border:1px dashed #c7d2fe;border-radius:8px;padding:14px 16px;font-size:12.5px;line-height:1.9;font-family:inherit;">'+a.strDraft+'</pre>';
+  }
+  return '<div class="lang-tabs">'
+    +'<span class="lang-tab on" id="'+uid+'-t1" onclick="strTab(\''+uid+'\',1)">62 项要素表单</span>'
+    +'<span class="lang-tab" id="'+uid+'-t2" onclick="strTab(\''+uid+'\',2)">报告正文（中）</span>'
+    +'<span class="lang-tab" id="'+uid+'-t3" onclick="strTab(\''+uid+'\',3)">Report (EN)</span></div>'
+    +'<div id="'+uid+'-p1">'+strFormHTML(a)+'</div>'
+    +'<pre id="'+uid+'-p2" '+pre+'>'+a.strDraft+'</pre>'
+    +'<pre id="'+uid+'-p3" '+pre+'>'+(a.en||enFallback(a))+'</pre>';
+}
+function strTab(uid,t){
+  [1,2,3].forEach(function(k){
+    document.getElementById(uid+'-t'+k).classList.toggle('on',k===t);
+    document.getElementById(uid+'-p'+k).style.display=(k===t)?'block':'none';
+  });
+}
+
+/* ================= 名单筛查 ================= */
+const WATCHLIST=[
+  {name:"MUHAMMAD ILYAS",alias:"穆罕默德·伊利亚斯 / ILYAS MUHAMMAD",list:"联合国安理会·涉恐综合名单（境内法定执行）",sim:87,type:"red"},
+  {name:"LI XIAOMING",alias:"李晓明 / 李晓铭 / LEE Hsiao-Ming",list:"境外扩展库·OFAC（选配，非境内法定名单）",sim:92,type:"amber"},
+  {name:"张伟民",alias:"ZHANG WEIMIN / 张伟民（曾用名：张建）",list:"公安部 A 级通缉协查（演示）",sim:96,type:"red"},
+  {name:"王强",alias:"WANG QIANG",list:"PEP 政要关联人（演示）",sim:74,type:"amber"}
+];
+function runScan(){
+  const v=document.getElementById('scan-input').value.trim();
+  const box=document.getElementById('scan-result');
+  if(!v){toast('请先输入筛查对象');return;}
+  box.innerHTML='<p style="color:var(--muted);font-size:13px;">筛查中…（名单库版本 2026.10.01 · 共 12,847 条）</p>';
+  setTimeout(()=>{
+    const key=v.toLowerCase();
+    let hits=WATCHLIST.filter(w=>{
+      const pool=(w.name+w.alias).toLowerCase();
+      return key.split(/\s+/).some(k=>k&&pool.includes(k.slice(0,2))) || pool.includes(key) ||
+             [...key].filter(c=>pool.includes(c)).length/Math.max(key.length,1) >= 0.85;
+    });
+    // 简化演示：精确示例命中
+    const extOn=document.getElementById('ext-switch').classList.contains('on');
+    if(v==='张伟民') hits=[WATCHLIST[2]];
+    if(v.toUpperCase()==='LI XIAOMING'){
+      if(!extOn){
+        box.innerHTML=`<div style="margin-top:10px;padding:12px 14px;background:var(--amber-bg);border:1px solid #fde68a;border-radius:8px;font-size:13px;color:var(--amber);line-height:1.9;">⚠ 该姓名在境外扩展名单库（OFAC）中存在候选命中（相似度 92%），但<b>扩展库未启用</b>——本机构无跨境美元业务暴露，按“筛查范围与法定义务对齐”设计不纳入默认筛查。需要时可开启上方开关启用扩展库。</div>`;
+        return;
+      }
+      hits=[WATCHLIST[1]];
+    }
+    if(v==='某某贸易有限公司') hits=[];
+    if(hits.length){
+      box.innerHTML=`<table style="margin-top:10px;">`+hits.map(h=>`
+        <tr class="hit-row"><td>
+          <b>${h.name}</b> <span style="color:var(--muted);font-size:12px;">（别名：${h.alias}）</span><br>
+          <span class="tag ${h.type}" style="margin-top:6px;">${h.list}</span>
+          <span class="tag amber" style="margin-left:6px;">匹配置信度 ${h.sim}%</span>
+        </td><td style="width:220px;">
+          <button class="btn primary small" onclick="toast('已冻结账户，紧急上报工单已生成（演示）')">命中处置</button>
+          <button class="btn ghost small" onclick="toast('误报已批量排除并留痕（演示）')">批量排除</button>
+        </td></tr>`).join('')+`</table>
+        <p style="font-size:12px;color:var(--red);margin-top:10px;">⚠ 命中即冻结、24 小时时限已自动开启，全部比对过程已留痕。</p>`;
+    }else{
+      box.innerHTML=`<div style="margin-top:10px;padding:12px 14px;background:var(--green-bg);border:1px solid #bbf7d0;border-radius:8px;font-size:13px;color:var(--green);">✔ 未命中名单（本次筛查已留痕：筛查人 / 时间 / 名单库版本 / 关键词）</div>`;
+    }
+  },600);
+}
+
+/* ================= 报文预览 / 签字 ================= */
+let docIdx=0,docLangCur='cn';
+function openDoc(i,l){
+  docIdx=i;docLangCur=l||'tbl';
+  const a=ALERTS[i];
+  document.getElementById('doc-meta').textContent='报告编号 STR-2026-1007-0'+(i+1)+' · 关联预警 '+a.id+' · 银行业可疑交易报告 62 项要素 · 依据《反洗钱法》《金融机构大额交易和可疑交易报告管理办法》报送';
+  document.getElementById('doc-tbl').innerHTML=a.s62?strFormHTML(a):'<p style="font-size:13px;color:var(--muted);line-height:2;">本笔尚未生成要素表 —— '+a.strDraft+'</p>';
+  document.getElementById('doc-cn').textContent=a.strDraft;
+  document.getElementById('doc-en').textContent=a.en||enFallback(a);
+  document.getElementById('doc-sign').innerHTML='<span class="sign-hint">（待人工签字确认）</span>';
+  document.getElementById('doc-sign-btn').style.display='';
+  docLang(docLangCur);
+  document.getElementById('doc-mask').classList.add('show');
+}
+function docLang(l){
+  docLangCur=l;
+  ['tbl','cn','en'].forEach(function(k){
+    document.getElementById('dlt-'+k).classList.toggle('on',k===l);
+    document.getElementById('doc-'+k).style.display=(k===l)?'block':'none';
+  });
+}
+function docSign(){
+  document.getElementById('doc-sign').innerHTML='<span class="sign">Feng Yu</span><span class="stamp">已复核</span>';
+  document.getElementById('doc-sign-btn').style.display='none';
+  toast('人工复核签字确认完成：报告转入报送队列，签字与时间戳已留痕（演示）');
+  if(document.getElementById('page-flow').classList.contains('active')) flowAuth();
+}
+function docPrint(){toast('已调起打印预览：A4 版式，含复核签字区（演示环境模拟）');}
+function docClose(){document.getElementById('doc-mask').classList.remove('show');}
+
+/* ================= 全流程演示 ================= */
+let flowStage=0,flowSel=0;
+const FLOW_IDS=[0,1,3];
+function flowStepsPaint(){
+  document.querySelectorAll('#flow-steps .step').forEach((s,i)=>{
+    s.classList.toggle('on',i===flowStage);s.classList.toggle('done',i<flowStage);
+  });
+}
+function flowReset(){
+  flowStage=0;flowSel=0;flowAuth1=false;flowAuth2=false;flowStepsPaint();
+  if(flowTimer){clearInterval(flowTimer);flowTimer=null;}
+  document.getElementById('flow-body').innerHTML=`
+    <p style="font-size:13.5px;line-height:2;">以一条真实形态的可疑交易为例（<b>分拆现金存入规避大额申报</b>），一键走完本产品的业务闭环：</p>
+    <p style="font-size:13px;line-height:2;color:var(--muted);">交易数据扫描 → 规则引擎 + AI 预诊断 → 人工研判处置 → 一键生成 STR（<b>62 项官方要素对照表单 + 中英双语正文</b>）→ 报告预览 → 打印确认 → 人工复核签字 → 转入报送队列，全程留痕。</p>
+    <button class="btn primary" onclick="flowScan()">▶ 开始全流程演示</button>`;
+}
+let flowTimer=null;
+function flowScan(){
+  flowStage=1;flowStepsPaint();
+  if(flowTimer){clearInterval(flowTimer);flowTimer=null;}
+  document.getElementById('flow-body').innerHTML=`<div class="flow-log" id="flog"></div><div class="pbar"><div id="fpb"></div></div>`;
+  const logs=["[10:00:01] 启动全量交易扫描：T-1 日交易 128,431 笔，客户 21,607 户",
+    "[10:00:03] 数据底座装载完成：客户画像 ✓  交易流水 ✓  名单库 v2026.10.01 ✓",
+    "[10:00:05] 规则引擎执行 R001–R016（基础 8 条 + 类型化 8 条）…… 命中 23 条",
+    "[10:00:06] AI 智能诊断：交易链路分析 / 同案例比对 / 置信度评估完成",
+    "[10:00:07] 风险分级排序完成：高风险 3 条 / 中风险 4 条 / 低风险已折叠",
+    "[10:00:07] 研判队列已推送至反洗钱专岗工作台"];
+  let i=0;
+  flowTimer=setInterval(()=>{
+    const fl=document.getElementById('flog'),pb=document.getElementById('fpb');
+    if(!fl||!fl.isConnected){clearInterval(flowTimer);flowTimer=null;return;}   /* 页面已被替换：安全退出，避免报错与串写 */
+    if(i<logs.length){
+      fl.innerHTML+=logs[i]+"<br>";
+      if(pb)pb.style.width=((i+1)/logs.length*100)+'%';
+      i++;
+      if(i===logs.length){   /* 最后一行与完成按钮同一拍输出，不留空档 */
+        clearInterval(flowTimer);flowTimer=null;
+        fl.innerHTML+='<br><b style="color:#86efac;">扫描完成。</b>　<button class="btn primary small" onclick="flowPick()">进入预警筛选 →</button>';
+      }
+    }else{clearInterval(flowTimer);flowTimer=null;}
+  },650);
+}
+function flowPick(){
+  flowStage=2;flowStepsPaint();
+  const rows=FLOW_IDS.map((idx,k)=>{
+    const a=ALERTS[idx];
+    return `<tr class="clickable ${k===flowSel?'sel':''}" id="frow-${k}" onclick="flowSelRow(${k})"><td class="mono">${a.id}</td><td>${a.cust}</td><td>${a.rule}</td><td><b style="color:var(--${a.level});">${a.score}</b></td></tr>`;
+  }).join('');
+  document.getElementById('flow-body').innerHTML=`
+    <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">AI 已按风险分排序，请选择一条进入研判（默认选中最高风险）：</p>
+    <table><tr><th>预警编号</th><th>客户</th><th>触发规则</th><th>AI 风险分</th></tr>${rows}</table>
+    <div style="margin-top:14px;"><button class="btn primary" onclick="flowJudge()">进入研判处置 →</button></div>`;
+}
+function flowSelRow(k){
+  flowSel=k;
+  FLOW_IDS.forEach((x,idx)=>document.getElementById('frow-'+idx).classList.toggle('sel',idx===k));
+}
+function flowJudge(){
+  flowStage=3;flowStepsPaint();
+  const a=ALERTS[flowSel];
+  document.getElementById('flow-body').innerHTML=`
+    <p style="font-size:13.5px;"><b>${a.id}</b> · ${a.cust} · ${a.rule} · AI 风险分 <b style="color:var(--${a.level});">${a.score}</b></p>
+    <p style="font-size:13px;line-height:2;background:var(--primary-bg);border-radius:8px;padding:12px 14px;">${a.ruleExplain}</p>
+    <p style="font-size:13px;line-height:1.9;"><b style="color:var(--purple);">AI 处置建议：</b>${a.aiAdvice}</p>
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn primary" onclick="flowStr()">确认可疑 · 走 STR 报送 →</button>
+      <button class="btn ghost" onclick="toast('已排除并留痕。本演示建议选择上报，走完闭环')">人工排除</button>
+    </div>`;
+}
+function flowStr(){
+  flowStage=4;flowStepsPaint();
+  const b=document.getElementById('flow-body');const a=ALERTS[flowSel];
+  b.innerHTML=`<p style="font-size:13.5px;">正在依据交易数据与研判结论生成 STR 初稿…</p><div class="pbar"><div id="fpb2"></div></div>`;
+  setTimeout(()=>{const p=document.getElementById('fpb2');if(p)p.style.width='100%';},60);
+  setTimeout(()=>{
+    if(!b||!b.isConnected)return;                                /* 页面已切换：放弃写入 */
+    b.innerHTML='<p style="font-size:13.5px;">STR 初稿生成完成 —— 按人民银行 3 号令附件 <b>62 项要素</b>逐项填充，其中仅判断性要素由 AI 生成、待专岗逐项复核：</p>'
+      +strBlock(a,'f')
+      +'<p style="font-size:12px;color:var(--muted);">English 版用于涉外案例 / 跨境协查报送场景；AI 生成版自动存档，人工修订后双版本对照。</p>'
+      +'<button class="btn primary" onclick="flowPreview()">进入报告预览与签署 →</button>';
+    toast('STR 初稿已生成：62 项要素对照表单 + 中英双语正文');
+  },1300);
+}
+function flowPreview(){
+  flowStage=5;flowStepsPaint();
+  openDoc(flowSel,'tbl');
+  document.getElementById('flow-body').innerHTML=`
+    <p style="font-size:13.5px;line-height:2;">报告预览已在屏幕中央打开，请完成最后两步：</p>
+    <p style="font-size:13px;line-height:2;">① <b>打印确认</b>：A4 版式打印预览，含复核签字区；② <b>人工复核签字确认</b>：签字 + 时间戳留痕后，报告正式转入报送队列。</p>
+    <button class="btn ghost" onclick="openDoc(flowSel,docLangCur)">重新打开报告预览</button>
+    <div id="flow-done"></div>`;
+}
+function flowAuth(){
+  flowStage=6;flowStepsPaint();
+  document.getElementById('flow-body').innerHTML=`
+    <p style="font-size:13.5px;line-height:2;"><b>经办已签字（冯宇 · 工号 NJ-AML-0231 · 岗位编号 GW-AML-01）。</b>按内控要求，STR 报送须走<b>三级流转</b>：经办 → 复核 → 审批，每级授权独立留痕。请依次完成两位上级的授权：</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="card" style="margin:0;" id="fa-1">
+        <h3>② 复核岗授权 <small>双人复核原则</small></h3>
+        <dl class="kv"><dt>复核人</dt><dd>张敏（反洗钱复核岗）</dd><dt>工号</dt><dd class="mono">NJ-AML-0108</dd><dt>岗位编号</dt><dd class="mono">GW-AML-02</dd><dt>复核要点</dt><dd>交易要素核对、定性是否成立、报告要素完整性</dd></dl>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn ghost small" onclick="flowDoAuth(1,'🎫 刷员工卡')">🎫 刷员工卡</button>
+          <button class="btn ghost small" onclick="flowDoAuth(1,'☝ 指纹授权')">☝ 指纹</button>
+          <button class="btn ghost small" onclick="flowDoAuth(1,'🔑 授权码')">🔑 授权码</button>
+        </div>
+      </div>
+      <div class="card" style="margin:0;" id="fa-2">
+        <h3>③ 审批岗授权 <small>合规负责人</small></h3>
+        <dl class="kv"><dt>审批人</dt><dd>王建国（合规负责人）</dd><dt>工号</dt><dd class="mono">NJ-CC-0006</dd><dt>岗位编号</dt><dd class="mono">GW-CC-01</dd><dt>审批要点</dt><dd>报送合规性终审、时限确认、对外报送责任签发</dd></dl>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn ghost small" onclick="flowDoAuth(2,'🎫 刷员工卡')">🎫 刷员工卡</button>
+          <button class="btn ghost small" onclick="flowDoAuth(2,'☝ 指纹授权')">☝ 指纹</button>
+          <button class="btn ghost small" onclick="flowDoAuth(2,'🔑 授权码')">🔑 授权码</button>
+        </div>
+      </div>
+    </div>
+    <div id="fa-done" style="margin-top:14px;"></div>`;
+  toast('请完成复核岗与审批岗授权（每种授权方式均可演示）');
+}
+let flowAuth1=false,flowAuth2=false;
+function flowDoAuth(n,method){
+  const rec=`<div style="margin-top:10px;padding:10px 12px;background:var(--green-bg);border:1px solid #bbf7d0;border-radius:8px;font-size:12.5px;color:var(--green);line-height:1.9;">✔ 复核/审批通过 · 授权方式：${method}<br><span class="mono">工号 ${n===1?'NJ-AML-0108':'NJ-CC-0006'} · 岗位编号 ${n===1?'GW-AML-02':'GW-CC-01'} · ${n===1?'张敏':'王建国'} · 2026-10-07 ${n===1?'11:58:21':'12:20:47'} · 授权影像已留痕归档</span></div>`;
+  const card=document.getElementById('fa-'+n);
+  if(!card||!card.isConnected)return;                            /* 页面已切换：忽略过期操作 */
+  card.querySelectorAll('button').forEach(b=>b.remove());
+  card.insertAdjacentHTML('beforeend',rec);
+  if(n===1)flowAuth1=true; if(n===2)flowAuth2=true;
+  if(flowAuth1&&flowAuth2){
+    const done=document.getElementById('fa-done');
+    if(done&&done.isConnected){
+      done.innerHTML=`<button class="btn primary" onclick="flowSubmit()">生成报文 · 报送人民银行反洗钱监测分析中心 →</button>`;
+      toast('三级流转授权完成，可生成报文报送');
+    }
+  }
+}
+function flowSubmit(){
+  flowStage=7;flowStepsPaint();
+  const a=ALERTS[flowSel],v=a.s62||{};
+  const cd=x=>String(x||'').split(' ')[0];                      /* 取代码值，如 "01 模型筛选" → "01" */
+  const nm=String(v[4]||a.cust||'').replace(/<[^>]+>/g,'');
+  const mFeat=String(v[24]||'').match(/^(R\d{3})（本机构报备代码\s*(\d{4})/);
+  const feat=mFeat?(mFeat[1]+' · 本机构报备代码 '+mFeat[2]):String(v[24]||'');
+  const xml=`&lt;Report&gt;<br>
+　&lt;ReportInfo&gt; 报告机构编码：${v[1]||'B0032NJ0101'}｜报告类型：STR｜报告紧急程度(DETR)：${cd(v[17])||'01'}｜报送次数标志(TORP)：${String(v[18]||'1').split('（')[0]}｜报送方向(DORP)：${cd(v[19])||'01'}｜生成时间：2026-10-07 12:21:05 &lt;/ReportInfo&gt;<br>
+　&lt;SubjectInfo&gt; 可疑主体：${nm}｜证件类型：${v[5]||'居民身份证'}｜证件号码：${v[6]||''}｜国籍：${v[16]||''} &lt;/SubjectInfo&gt;<br>
+　&lt;TransactionInfo&gt; 客户账号：${v[31]||''}｜交易时间：${v[38]||''}｜交易金额：${v[48]||''}｜币种：${v[47]||''}｜资金收付标志：${v[45]||''} &lt;/TransactionInfo&gt;<br>
+　&lt;AnalysisInfo&gt; 触发点(TPTR)：${cd(v[20])||'01'}｜疑似涉罪类型(TOSC)：${cd(v[23])||''}｜可疑交易特征代码：${feat}｜资金交易及客户行为情况(STCB) 与疑点分析(AOSP) 按第 21、22 项要素生成｜附件：回访记录、交易明细 &lt;/AnalysisInfo&gt;<br>
+　&lt;AuditInfo&gt; 经办：NJ-AML-0231｜复核：NJ-AML-0108｜审批：NJ-CC-0006｜三级授权影像已归档 &lt;/AuditInfo&gt;<br>
+&lt;/Report&gt;`;
+  document.getElementById('flow-body').innerHTML=`
+    <p style="font-size:13.5px;">按人民银行报文规范生成可疑交易报告报文（字段取自本笔 62 项要素表）：</p>
+    <div class="flow-log">${xml}</div>
+    <p style="font-size:13px;line-height:2;margin-top:12px;">报文经<b>专线加密通道</b>提交<b>人民银行反洗钱监测分析中心（CAMLMAC）</b>，同时本机构留存纸质版打印、签字、扫描归档。</p>
+    <div class="pbar"><div id="fpb3"></div></div>
+    <div id="fb-receipt"></div>`;
+  setTimeout(()=>{const p=document.getElementById('fpb3');if(p&&p.isConnected)p.style.width='45%';},100);
+  setTimeout(()=>{const p=document.getElementById('fpb3');if(p&&p.isConnected)p.style.width='100%';},900);
+  setTimeout(()=>{
+    const r=document.getElementById('fb-receipt');
+    if(!r||!r.isConnected)return;                                /* 页面已切换：丢弃本次回执，避免报错与串写 */
+    r.innerHTML=`
+    <div style="padding:14px 16px;background:var(--green-bg);border:1px solid #bbf7d0;border-radius:10px;font-size:13px;line-height:2;color:var(--green);">
+    ✔ 报送成功 · 回执编号 <span class="mono">RX-2026-1007-88231</span> · CAMLMAC 确认时间 12:21:38 · 报送时限（发现之日起 5 个工作日内）余量充足</div>
+    <button class="btn ghost" style="margin-top:12px;" onclick="toast('已打开回执与授权影像归档包（演示）')">查看回执与归档包（报文 / 回执 / 签字扫描件 / 授权影像）</button>`;
+    flowFinish();
+  },1600);
+}
+function flowFinish(){
+  flowStage=7;flowStepsPaint();
+  const b=document.getElementById('flow-body');
+  if(b&&!document.getElementById('flow-sum')){
+    b.insertAdjacentHTML('beforeend',`<div id="flow-sum" style="margin-top:14px;padding:16px;background:var(--green-bg);border:1px solid #bbf7d0;border-radius:10px;font-size:13.5px;line-height:2;color:var(--green);">
+    ✔ 全流程闭环完成：扫描 → 命中 → 研判 → STR（中/英）→ 预览签字 → <b>三级流转授权 → 报文报送人行反洗钱监测分析中心 → 回执归档</b>，全程留痕。</div>`);
+  }
+}
+
+extToggle.name; /* 名单库扩展开关 */
+function extToggle(el){
+  el.classList.toggle('on');
+  document.getElementById('ext-note').textContent = el.classList.contains('on')
+    ? '已启用 —— 筛查范围扩展至 OFAC / EU / UK（适用于有跨境美元业务暴露的机构）'
+    : '未启用 —— 当前仅筛查境内法定名单核心库';
+  toast(el.classList.contains('on')?'境外扩展名单库已启用（选配，操作留痕）':'境外扩展名单库已停用');
+}
+
+flowReset();
+renderAlerts();
+</script>
+</body>
+</html>
