@@ -8,6 +8,8 @@
 
 **[▶ 在线只读演示（无需登录）](https://qingyuan-aml-demo.app.workbuddy.host/)** ｜ 规则引擎 · 62 项 STR 要素 · 三级授权 · 防篡改审计链 · 名单模糊匹配与回溯筛查 ｜ English: [README_EN.md](README_EN.md)
 
+**[▶ 3 分钟演示视频（本人配音）](https://qingyuan-aml-demo.app.workbuddy.host/demo-video.mp4)** ｜ 仓库内副本：[docs/media/demo-video.mp4](docs/media/demo-video.mp4) ｜ 逐句对齐的录屏讲解，覆盖预警溯源 → STR 报告 → 审计链 → 名单筛查 → 尽职调查 → 风险评级
+
 ## 系统架构
 
 ```
