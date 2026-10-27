@@ -124,7 +124,7 @@ async function runScan(){
     }else{
       box.innerHTML = `<div class="miss-box">✔ 未命中（模拟库 ${d.list_size} 条，相似度低于疑似阈值 ${d.thresholds.suspect}）。${esc(d.action)}</div>`;
     }
-  }catch(e){ box.innerHTML = `<div class="hit-box">筛查失败：${esc(e.message)}</div>`; }
+  }catch(e){ box.innerHTML = `<div class="hit-box">筛查失败：${esc(errText(e))}</div>`; }
 }
 
 async function runBackScreen(){
@@ -150,7 +150,7 @@ async function runBackScreen(){
       ${d.hits.length ? `<table class="grid"><thead><tr><th>案例</th><th>客户/主体</th><th>命中名单项</th><th>分数</th><th>匹配方式</th><th>动作</th></tr></thead><tbody>${hitRows}</tbody></table>` : '<div class="miss-box">无命中项。</div>'}
       ${d.suspects.length ? `<div style="font-size:12px;color:var(--muted);margin:10px 0 4px;">疑似项（不直接处置，转人工核验）：</div><table class="grid"><tbody>${susRows}</tbody></table>` : ""}
       <div class="str-note" style="margin-top:8px;">${esc(d.note)} 本次回溯已写入审计链。</div>`;
-  }catch(e){ box.innerHTML = `<div class="hit-box">回溯筛查失败：${esc(e.message)}</div>`; }
+  }catch(e){ box.innerHTML = `<div class="hit-box">回溯筛查失败：${esc(errText(e))}</div>`; }
 }
 
 /* ================= 大额交易报告 ================= */
@@ -175,7 +175,7 @@ async function loadCtr(){
       <td><span class="pill green">达标应报</span></td></tr>`).join("");
     body.innerHTML = `<table class="grid"><thead><tr><th>案例</th><th>客户</th><th>日期</th><th>类型</th><th>当日累计</th><th>阈值</th><th>状态</th></tr></thead><tbody>${rows}</tbody></table>
       <div class="str-note">${esc(d.notice)}</div>`;
-  }catch(e){ body.innerHTML = `<div class="hit-box">加载失败：${esc(e.message)}</div>`; }
+  }catch(e){ body.innerHTML = `<div class="hit-box">加载失败：${esc(errText(e))}</div>`; }
 }
 
 /* ================= 风险评级（四维模型实时计算） ================= */
@@ -186,7 +186,7 @@ async function renderRating(){
   if(!_ratingCache){
     body.innerHTML = '<span class="loading"></span>';
     try{ _ratingCache = await jget("/api/rating"); }
-    catch(e){ body.innerHTML = `<div class="hit-box">${esc(e.message)}</div>`; return; }
+    catch(e){ body.innerHTML = `<div class="hit-box">${esc(errText(e))}</div>`; return; }
   }
   const order = {"高":0, "中":1, "低":2};
   const rows = _ratingCache.ratings.slice().sort(
@@ -238,7 +238,7 @@ async function loadRules(){
   if(!body) return;
   if(!state.rules || !state.rules.length){
     body.innerHTML = '<span class="loading"></span>';
-    try{ state.rules = (await jget("/api/rules")).rules; }catch(e){ body.innerHTML = `<div class="hit-box">${esc(e.message)}</div>`; return; }
+    try{ state.rules = (await jget("/api/rules")).rules; }catch(e){ body.innerHTML = `<div class="hit-box">${esc(errText(e))}</div>`; return; }
   }
   // executable 由后端规则注册表返回，与"可执行"状态同源
   const rows = state.rules.map(r=>{
@@ -268,7 +268,7 @@ async function loadLinkage(){
   }catch(e){
     ["coverageBody","effectivenessBody","caseLibraryBody"].forEach(id=>{
       const el = document.getElementById(id);
-      if(el) el.innerHTML = `<div class="hit-box">联动数据加载失败：${esc(e.message)}</div>`;
+      if(el) el.innerHTML = `<div class="hit-box">联动数据加载失败：${esc(errText(e))}</div>`;
     });
   }
 }
@@ -335,6 +335,6 @@ async function openCaseById(cid){
     state.current = c;
     renderCase(c);
     document.getElementById("mainCol").scrollIntoView({behavior:"smooth", block:"start"});
-  }catch(e){ toast("打开案例失败：" + e.message); }
+  }catch(e){ toast("打开案例失败：" + errText(e)); }
 }
 

@@ -54,7 +54,7 @@ function flowScan(){
         }
       }
     }, 480);
-  }).catch(e=>{ body.innerHTML = `<p style="color:var(--red)">${esc(e.message)}</p>`; });
+  }).catch(e=>{ body.innerHTML = `<p style="color:var(--red)">${esc(errText(e))}</p>`; });
 }
 function flowPick(){
   state.flowStage = 2; flowPaint();

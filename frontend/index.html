@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
 <title>清源AML · 反洗钱智能监测平台</title>
-<link rel="stylesheet" href="/static/css/app.css?v=18">
+<link rel="stylesheet" href="/static/css/app.css?v=19">
 </head>
 <body>
 
@@ -112,7 +112,7 @@
     <!-- ============ 名单筛查 ============ -->
     <section id="page-screening" class="page">
       <div class="note-bar warn"><b>红线：</b>名单命中不走 AI，先限制后核验。命中即冻结账户，24 小时内人工复核。<br>
-        模糊匹配 v2（打分制）：完全一致/别名/名单主体整体出现 → <b>命中</b>；错别字、缺前缀、普通词片段 → <b>疑似（转人工，不直接处置）</b>。演示级实现——未含拼音/音译变体库，生产须接官方匹配引擎；阈值为演示初值。</div>
+        模糊匹配 v2（打分制）：完全一致/别名/名单主体整体出现 → <b>命中</b>；错别字、缺前缀、普通词片段 → <b>疑似（转人工，不直接处置）</b>。演示级实现——<b>名单库为内置 3 条模拟名单</b>（非官方全量制裁名单），未含拼音/音译变体库，生产须接官方名单源与匹配引擎；阈值为演示初值。</div>
       <div class="card"><h3>客户与交易对手筛查 <small>模糊匹配 v2 · 与 R005 共用名单</small></h3>
         <div class="panel-body">
           <div class="screening-row">
@@ -348,16 +348,16 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="/static/js/config.js?v=18"></script>
-<script src="/static/js/core.js?v=18"></script>
-<script src="/static/js/login.js?v=18"></script>
-<script src="/static/js/dashboard.js?v=18"></script>
-<script src="/static/js/submissions.js?v=18"></script>
-<script src="/static/js/cases.js?v=18"></script>
-<script src="/static/js/report.js?v=18"></script>
-<script src="/static/js/auth.js?v=18"></script>
-<script src="/static/js/flow.js?v=18"></script>
-<script src="/static/js/cdd.js?v=18"></script>
-<script src="/static/js/app.js?v=18"></script>
+<script src="/static/js/config.js?v=19"></script>
+<script src="/static/js/core.js?v=19"></script>
+<script src="/static/js/login.js?v=19"></script>
+<script src="/static/js/dashboard.js?v=19"></script>
+<script src="/static/js/submissions.js?v=19"></script>
+<script src="/static/js/cases.js?v=19"></script>
+<script src="/static/js/report.js?v=19"></script>
+<script src="/static/js/auth.js?v=19"></script>
+<script src="/static/js/flow.js?v=19"></script>
+<script src="/static/js/cdd.js?v=19"></script>
+<script src="/static/js/app.js?v=19"></script>
 </body>
 </html>

@@ -104,7 +104,33 @@ async function resetDemo(){
     const r = await jpost("/api/admin/reset-demo", {});
     toast(`已重置：清除 ${r.submissions} 条上报、${r.library_cases} 条案例库`);
     setTimeout(()=>location.reload(), 700);
-  }catch(e){ toast("重置失败：" + e.message); }
+  }catch(e){ toast("重置失败：" + errText(e)); }
+}
+
+/* 把后端/网络错误翻成人话。
+   jget/jpost 抛的是响应体原文（多为 {"detail":"…"}），直接显示给用户既难看又像故障。
+   这里按状态码与关键字归类：没接外部数据源、只读环境、限流、模型未配置，各给一句明确解释。 */
+function errText(e){
+  const raw = String((e && e.message) || e || "").trim();
+  let detail = raw;
+  try{
+    const j = JSON.parse(raw);
+    if(j && j.detail) detail = String(j.detail);
+  }catch(_){ /* 非 JSON 就按原文处理 */ }
+
+  if(/只读/.test(detail)) return "演示环境为只读：该动作要写业务库，已关闭。本地 ./run.sh 可完整演示。";
+  if(/OPENAI_API_KEY|Live Provider|实时大模型/.test(detail))
+    return "实时大模型未配置密钥。线上演示固定使用预生成结果（mock），本地可用 AML_AI_PROVIDER=live + 密钥切换。";
+  if(/未配置|未接入|尚未实现|not configured|API_KEY/i.test(detail))
+    return "该外部数据源尚未接入（演示环境不连第三方接口），此处仅展示模拟结果。接入后即可真实查询。";
+  if(/请求过于频繁|429/.test(detail)) return "请求太频繁，等几秒再试。";
+  if(/超时|timeout|abort|Failed to fetch|NetworkError/i.test(detail))
+    return "网络超时或服务刚被唤醒，请刷新重试。";
+  if(/AI Provider 不可用/.test(detail))
+    return "AI 诊断源当前不可用：live 模式未配置密钥，或该案例没有预生成结果。线上演示固定用预生成结果，本地配好密钥可切 live。";
+  if(/无预生成诊断/.test(detail))
+    return "该案例在演示数据集中没有预生成诊断结果。";
+  return "加载失败：" + (detail.length > 160 ? detail.slice(0, 160) + "…" : detail);
 }
 
 /* ============ 演示送达（只读站也能把流程走完） ============

@@ -67,7 +67,7 @@ async function runDiagnose(){
     const d = await jpost("/api/diagnose/" + state.current.case_id);
     state.workDiag = d;
     renderResult(d);
-  }catch(e){ alert("研判失败：" + e.message); }
+  }catch(e){ alert("研判失败：" + errText(e)); }
   btn.disabled = false; btn.textContent = "重新研判";
 }
 
@@ -99,7 +99,7 @@ async function recordDisposition(cid, btn){
       {case_id: cid, conclusion: "放行", reason, operator: "陈立 NJ-AML-0231"});
     toast(`已沉淀负样本 ${r.library_case_id}`);
     if(btn){ btn.disabled = true; btn.textContent = "已沉淀负样本"; }
-  }catch(e){ toast("沉淀失败：" + e.message); }
+  }catch(e){ toast("沉淀失败：" + errText(e)); }
 }
 
 function renderResult(d){

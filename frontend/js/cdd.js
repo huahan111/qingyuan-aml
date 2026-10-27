@@ -68,7 +68,7 @@ async function runCddEnterprise(){
         </tbody></table>
       <div class="str-note">处置建议：${esc(d.suggestion || "—")}${d.provider === "mock-enterprise" ? "（模拟数据源，仅用于演示尽调流程与结论呈现）" : ""}</div>`;
   }catch(e){
-    box.innerHTML = `<div class="hit-box" style="border-color:#fca5a5;">${esc(e.message)}</div>`;
+    box.innerHTML = `<div class="miss-box">${esc(errText(e))}</div>`;
   }
 }
 
@@ -97,6 +97,6 @@ async function runCddPersonal(){
         <div class="str-note">${esc(d.notice || "")}</div>
       </div>`;
   }catch(e){
-    box.innerHTML = `<div class="hit-box" style="border-color:#fca5a5;">${esc(e.message)}</div>`;
+    box.innerHTML = `<div class="miss-box">${esc(errText(e))}</div>`;
   }
 }

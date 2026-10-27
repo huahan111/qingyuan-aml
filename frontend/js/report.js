@@ -12,7 +12,7 @@ async function genReport(source){
     if(source === "flow"){ state.flowReport = rep; } else { state.report = rep; }
     openReport(rep);
     toast("STR 初稿已生成：62 项要素 + 中英双语正文");
-  }catch(e){ alert("生成报告失败：" + e.message); }
+  }catch(e){ alert("生成报告失败：" + errText(e)); }
   if(btn){ btn.disabled = false; btn.textContent = "⚡ 生成 STR 初稿"; }
 }
 

@@ -117,7 +117,7 @@ async function openArchivedSubmission(id){
     state.correctionOf = null;
     state.signReportNo = d.report.report_no;
     openReport(d.report);
-  }catch(e){ toast("打开归档失败：" + e.message); }
+  }catch(e){ toast("打开归档失败：" + errText(e)); }
 }
 
 async function correctSubmission(id){
@@ -129,7 +129,7 @@ async function correctSubmission(id){
     state.correctionOf = d.receipt_no;
     renderActionState();
     toast(`已基于原回执 ${d.receipt_no} 生成更正草稿，请修订后重新走三级授权`);
-  }catch(e){ toast("生成更正草稿失败：" + e.message); }
+  }catch(e){ toast("生成更正草稿失败：" + errText(e)); }
 }
 
 function submissionPayload(){
@@ -162,7 +162,7 @@ async function saveSubmission(){
     return d;
   }catch(e){
     console.error(e);
-    toast("台账写入失败：" + e.message);
+    toast("台账写入失败：" + errText(e));
     return null;
   }
 }

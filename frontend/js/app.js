@@ -25,7 +25,9 @@ async function init(){
     const resetBtn = document.getElementById("btnResetDemo");
     if(resetBtn) resetBtn.style.display = state.readOnly ? "none" : "";
     document.getElementById("providerName").textContent =
-      h.ai_provider === "mock-prebuilt" ? "预生成校验（演示模式）" : "实时大模型（Live）";
+      h.ai_provider === "mock-prebuilt" ? "预生成校验（演示模式）"
+      : h.live_available ? "实时大模型（Live）"
+      : "实时模式·未配置密钥";
     const ds = h.dataset || {};
     document.querySelectorAll("#dsTag").forEach(el=>{
       el.textContent = `${ds.name || "演示数据集"} ${ds.version || ""}（${ds.count || 0} 条 · JSON）`;
