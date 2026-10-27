@@ -21,6 +21,7 @@ from infra import audit as audit_chain
 from infra import auth as auth_infra
 from services.triage import triage
 from services.screening import back_screen, screen
+from services.jurisdiction import lookup as jurisdiction_lookup, overview as jurisdiction_overview
 from services.ctr import build_ctr
 from services.rating import rate_case
 from services.similar_cases import similar_for_case
@@ -324,6 +325,35 @@ def list_rules():
     conn.close()
     # executable 以后端规则注册表为准，前端不再硬编码清单
     return {"rules": [dict(r, executable=(r["rule_id"] in RULE_FUNCS)) for r in rows]}
+
+
+@app.get("/api/sanctions/meta")
+def sanctions_meta():
+    """名单库元信息：来源、条数、生成时间、处置分级表。前端筛查页首屏用。"""
+    from domain.sanctions import POLICY_TABLE
+    from domain.sanctions import loader as sanctions_loader
+
+    st = sanctions_loader.stats()
+    return {
+        "total": st["total"],
+        "aliases": st["aliases_indexed"],
+        "generated_at": st["generated_at"],
+        "zh_alias_count": st["zh_alias_count"],
+        "sources": st["sources"],
+        "top_countries": st["countries"],
+        "policy_table": POLICY_TABLE,
+    }
+
+
+@app.get("/api/jurisdiction")
+def jurisdiction(q: str = ""):
+    """地区风险：不带 q 返回概览，带 q 返回单个国家/地区的层级与措施。"""
+    try:
+        if (q or "").strip():
+            return jurisdiction_lookup(q)
+        return jurisdiction_overview()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @app.get("/api/screening")

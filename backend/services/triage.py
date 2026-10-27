@@ -1,12 +1,26 @@
 """三向分流领域服务：名单 > 身份不明 > 命中-排除留痕 > 灰区 > AI拦截 > 放行。"""
 
 
+def _sanction_reason(h):
+    """按命中的名单来源给处置口径：联合国=法定冻结；OFAC=审查+清算行确认。"""
+    p = h.get("params_found") or {}
+    src = p.get("list", "")
+    entry = " ".join(x for x in (p.get("entry_id", ""), p.get("matched", "")) if x)
+    if "联合国" in src:
+        return ("名单拦截 · 定向金融制裁",
+                f"命中{src}（{entry}）：立即冻结并停止金融服务，无金额门槛、不得事先通知，"
+                "24 小时内人工复核（不经 AI 诊断）")
+    return ("名单拦截 · 单边制裁",
+            f"命中{src}（{entry}）：属单边制裁，中国法下不当然产生冻结义务；"
+            "加强审查、拒绝办理并与清算行/合规确认后留痕")
+
+
 def triage(rule_hits, ai_result, case):
     # 1. 名单命中 → 直接拦截（不经 AI）
     for h in rule_hits:
         if h["rule_id"] == "R005":
-            return {"decision": "拦截", "path": "名单拦截",
-                    "reason": "命中制裁/涉恐名单，立即冻结，24小时内人工复核（不经AI诊断）"}
+            path, reason = _sanction_reason(h)
+            return {"decision": "拦截", "path": path, "reason": reason}
 
     # 1.5 客户身份不明/证件缺失 → 拒办拒交易（CDD 条线，不是名单命中）
     for h in rule_hits:

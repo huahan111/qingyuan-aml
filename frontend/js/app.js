@@ -62,6 +62,15 @@ async function init(){
     showLoadError(`已加载 ${state.caseDetails.length}/${state.cases.length} 条案例明细，`
       + "部分数据没取到（不影响点开单个案例）。");
   }
+
+  // 支持直接带锚点打开某一页（分享演示时用，例：/#screening）
+  applyHashPage();
+  window.addEventListener("hashchange", applyHashPage);
+}
+
+function applyHashPage(){
+  const name = (location.hash || "").replace("#", "").trim();
+  if(name && PAGE_META[name]) showPage(name);
 }
 
 init();

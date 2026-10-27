@@ -104,6 +104,88 @@ function renderAlerts(){
 
 /* ================= 名单筛查 ================= */
 function fillScan(v){ document.getElementById("scanInput").value = v; }
+
+function matchLine(m){
+  const bits = [
+    m.list,
+    m.program ? "制裁项目 " + m.program : "",
+    m.country ? "国别/地址 " + m.country : "",
+    m.listed_on ? "列入日期 " + m.listed_on : "",
+    m.matched_as_alias ? "匹配到名称「" + m.matched_name + "」" : ""
+  ].filter(Boolean);
+  return bits.map(b=>esc(b)).join("　·　");
+}
+
+async function initScreening(){
+  if(state.sanctionsMeta) return;
+  const box = document.getElementById("sanctionsMeta");
+  try{
+    const [meta, jur] = await Promise.all([jget("/api/sanctions/meta"), jget("/api/jurisdiction")]);
+    state.sanctionsMeta = meta;
+    state.jurisdiction = jur;
+    const brief = document.getElementById("sanctionsBrief");
+    if(brief) brief.textContent =
+      `${meta.total.toLocaleString()} 条 / 别名 ${meta.aliases.toLocaleString()} 个 · 快照 ${(meta.generated_at||"").slice(0,10)}`;
+    renderSanctionsMeta();
+    renderJurisdictionOverview();
+  }catch(e){
+    if(box) box.innerHTML = `<div class="hit-box">名单库信息没加载出来：${esc(errText(e))}</div>`;
+  }
+}
+
+function renderSanctionsMeta(){
+  const box = document.getElementById("sanctionsMeta");
+  const meta = state.sanctionsMeta;
+  if(!box || !meta) return;
+  const srcRows = meta.sources.map(s=>
+    `<tr><td>${esc(s.name)}</td><td style="font-family:monospace;">${s.entries.toLocaleString()}</td>
+     <td style="font-size:12px;color:var(--muted);">${esc((s.retrieved_at||"").slice(0,10))}</td></tr>`).join("");
+  const polRows = meta.policy_table.map(p=>
+    `<tr><td>${esc(p.type)}</td>
+     <td><span class="pill ${p.one_strike ? "red":"amber"}">${p.one_strike ? "一刀切" : "风险为本"}</span></td>
+     <td style="font-size:12.5px;">${esc(p.measures)}</td>
+     <td style="font-size:11.5px;color:var(--muted);">${esc(p.basis)}</td></tr>`).join("");
+  const ctys = (meta.top_countries||[]).slice(0,6)
+    .map(c=>`<span class="chip" onclick="fillJur('${esc(c.country)}')">${esc(c.country)} ${c.entries}</span>`).join(" ");
+  box.innerHTML = `
+    <table class="grid"><thead><tr><th>名单来源</th><th>条目数</th><th>取数日期</th></tr></thead><tbody>${srcRows}</tbody></table>
+    <div style="font-size:12px;color:var(--muted);margin:10px 0 4px;">命中后的处置口径（这是本产品最容易被说混的一块，直接列表）：</div>
+    <table class="grid"><thead><tr><th>名单 / 情形</th><th>是否一刀切</th><th>处置动作</th><th>依据</th></tr></thead><tbody>${polRows}</tbody></table>
+    <div class="str-note" style="margin-top:8px;">中文姓名比中拉丁字母名单，靠的是内置的 ${meta.zh_alias_count} 个中译名（哈马斯、东伊运、本·拉登、真主党、塔利班、瓦格纳等）；其余中文姓名需要拼音/音译转写引擎，本演示没有。
+      名单库按国籍/地址统计条目最多的国家：${ctys}</div>`;
+}
+
+function fillJur(v){ const el=document.getElementById("jurInput"); if(el){ el.value=v; runJurisdiction(); } }
+
+function renderJurisdictionOverview(){
+  const box = document.getElementById("jurResult");
+  const d = state.jurisdiction;
+  if(!box || !d) return;
+  const groups = d.groups.map(g=>`<div style="font-size:12.5px;margin-top:6px;"><b>${esc(g.label)}</b>（${g.items.length}）：${
+    g.items.map(j=>`<span class="chip" onclick="fillJur('${esc(j.zh)}')">${esc(j.zh)}</span>`).join(" ")}</div>`).join("");
+  box.innerHTML = `<div style="font-size:12.5px;color:var(--muted);">${esc(d.source)}（${esc(d.as_of)}）</div>
+    ${groups}
+    <div class="str-note" style="margin-top:8px;">${esc(d.not_listed_note)}</div>`;
+}
+
+async function runJurisdiction(){
+  const q = document.getElementById("jurInput").value.trim();
+  const box = document.getElementById("jurResult");
+  if(!q){ renderJurisdictionOverview(); return; }
+  box.innerHTML = '<span class="loading"></span>';
+  try{
+    const d = await jget("/api/jurisdiction?q=" + encodeURIComponent(q));
+    const color = d.tier === "call_for_action" ? "red" : d.tier === "increased_monitoring" ? "amber" : "green";
+    box.innerHTML = `<div class="hit-box" style="border-color:${d.tier==="normal"?"#86efac":"#fcd34d"};">
+      <b>${esc(d.query)}</b>　<span class="pill ${color}">${esc(d.label)}</span>　<span class="pill gray">风险 ${esc(d.risk_level)}</span>
+      <div style="margin-top:8px;font-size:13px;">处置：${esc(d.measures)}</div>
+      <div style="margin-top:6px;font-size:12px;color:var(--muted);">依据：${esc(d.basis)}</div>
+      ${d.jurisdiction && d.jurisdiction.note ? `<div style="margin-top:6px;font-size:12px;color:var(--muted);">备注：${esc(d.jurisdiction.note)}</div>` : ""}
+      ${d.note ? `<div style="margin-top:6px;font-size:12px;color:var(--muted);">${esc(d.note)}</div>` : ""}
+      <button class="btn ghost small" style="margin-top:10px;" onclick="renderJurisdictionOverview()">返回名单概览</button></div>`;
+  }catch(e){ box.innerHTML = `<div class="hit-box">查询失败：${esc(errText(e))}</div>`; }
+}
+
 async function runScan(){
   const q = document.getElementById("scanInput").value.trim();
   const box = document.getElementById("scanResult");
@@ -111,18 +193,25 @@ async function runScan(){
   box.innerHTML = '<p style="color:var(--muted);font-size:13px;">筛查中…</p>';
   try{
     const d = await jget("/api/screening?q=" + encodeURIComponent(q));
-    const bandCls = b => b.includes("命中") ? "red" : b === "高度疑似" ? "red" : b === "疑似" ? "amber" : "gray";
+    const bandCls = b => (b === "完全命中" || b === "命中" || b === "高度疑似") ? "red" : b === "疑似" ? "amber" : "gray";
+    const item = m=>`<div style="margin-top:8px;">
+        <b>${esc(m.name)}</b>　<span class="pill ${bandCls(m.band)}">${esc(m.band)} ${m.score.toFixed(2)}</span>
+        <span class="pill amber">${esc(m.match_type)}</span>
+        <span class="pill gray">${esc(m.entry_id)}</span>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px;">${matchLine(m)}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px;">处置口径：<b>${esc(m.policy.tier)}</b>　${esc(m.policy.measures)}</div>
+      </div>`;
     if(d.hit){
-      const items = d.matches.map(m=>`<div><b>${esc(m.name)}</b>　<span class="pill ${bandCls(m.band)}">${esc(m.band)} ${m.score.toFixed(2)}</span>　<span class="pill amber">${esc(m.match_type)}</span></div>`).join("");
-      box.innerHTML = `<div class="hit-box">⚠ 命中名单（模拟库 ${d.list_size} 条）${items}
-        <div style="margin-top:8px;">处置：${esc(d.action)}</div>
-        <button class="btn small" style="margin-top:10px;" onclick="toast('已冻结账户，紧急上报工单已生成（演示）')">执行冻结并生成上报工单</button></div>`;
+      box.innerHTML = `<div class="hit-box">⚠ 命中名单（名单库 ${d.list_size.toLocaleString()} 条）
+        ${d.matches.map(item).join("")}
+        <div style="margin-top:10px;">处置：${esc(d.action)}</div>
+        <button class="btn small" style="margin-top:10px;" onclick="toast('已生成名单处置工单并留痕（演示）')">生成处置工单</button></div>`;
     }else if(d.matches.length){
-      const items = d.matches.map(m=>`<div><b>${esc(m.name)}</b>　<span class="pill ${bandCls(m.band)}">${esc(m.band)} ${m.score.toFixed(2)}</span>　<span class="pill amber">${esc(m.match_type)}</span></div>`).join("");
-      box.innerHTML = `<div class="hit-box" style="border-color:#fcd34d;">◐ 未达命中阈值，按「疑似」转人工核验${items}
-        <div style="margin-top:8px;font-size:12px;color:var(--muted);">${esc(d.action)}</div></div>`;
+      box.innerHTML = `<div class="hit-box" style="border-color:#fcd34d;">◐ 未达命中阈值，按「疑似」转人工核验
+        ${d.matches.map(item).join("")}
+        <div style="margin-top:10px;font-size:12px;color:var(--muted);">${esc(d.action)}</div></div>`;
     }else{
-      box.innerHTML = `<div class="miss-box">✔ 未命中（模拟库 ${d.list_size} 条，相似度低于疑似阈值 ${d.thresholds.suspect}）。${esc(d.action)}</div>`;
+      box.innerHTML = `<div class="miss-box">✔ 未命中（名单库 ${d.list_size.toLocaleString()} 条，相似度低于疑似阈值 ${d.thresholds.suspect}）。${esc(d.action)}</div>`;
     }
   }catch(e){ box.innerHTML = `<div class="hit-box">筛查失败：${esc(errText(e))}</div>`; }
 }
@@ -138,16 +227,18 @@ async function runBackScreen(){
     const d = await jpost("/api/screening/back-screening", {});
     const hitRows = d.hits.map(h=>`<tr>
       <td style="font-family:monospace;">${esc(h.case_id)}</td><td>${esc(h.name)}</td>
-      <td><b>${esc(h.matched)}</b></td><td><span class="pill red">${esc(h.score.toFixed(2))}</span></td>
+      <td><b>${esc(h.matched)}</b><div style="font-size:11px;color:var(--muted);">${esc(h.matched_id||"")} · ${esc(h.list||"")}</div></td>
+      <td><span class="pill red">${esc(h.score.toFixed(2))}</span></td>
       <td>${esc(h.match_type)}</td>
-      <td><button class="btn ghost small" onclick="toast('已按名单处置流程生成冻结工单（演示）')">处置</button></td></tr>`).join("");
+      <td>${esc((h.policy||{}).tier||"")}</td>
+      <td><button class="btn ghost small" onclick="toast('已按名单处置流程生成处置工单（演示）')">处置</button></td></tr>`).join("");
     const susRows = d.suspects.map(h=>`<tr>
       <td style="font-family:monospace;">${esc(h.case_id)}</td><td>${esc(h.name)}</td>
       <td>${esc(h.matched)}</td><td><span class="pill amber">${esc(h.score.toFixed(2))}</span></td>
       <td>${esc(h.match_type)}</td><td><span class="pill gray">人工核验</span></td></tr>`).join("");
     box.innerHTML = `
-      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;">共筛查 ${d.screened} 个存量主体 → 命中 ${d.hits.length} 个、疑似 ${d.suspects.length} 个（名单库 ${d.list_size} 条，命中阈值 ${d.thresholds.hit}）。</div>
-      ${d.hits.length ? `<table class="grid"><thead><tr><th>案例</th><th>客户/主体</th><th>命中名单项</th><th>分数</th><th>匹配方式</th><th>动作</th></tr></thead><tbody>${hitRows}</tbody></table>` : '<div class="miss-box">无命中项。</div>'}
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px;">共筛查 ${d.screened} 个存量主体 → 命中 ${d.hits.length} 个、疑似 ${d.suspects.length} 个（名单库 ${d.list_size.toLocaleString()} 条，命中阈值 ${d.thresholds.hit}）。</div>
+      ${d.hits.length ? `<table class="grid"><thead><tr><th>案例</th><th>客户/主体</th><th>命中名单项</th><th>分数</th><th>匹配方式</th><th>处置口径</th><th>动作</th></tr></thead><tbody>${hitRows}</tbody></table>` : '<div class="miss-box">无命中项。</div>'}
       ${d.suspects.length ? `<div style="font-size:12px;color:var(--muted);margin:10px 0 4px;">疑似项（不直接处置，转人工核验）：</div><table class="grid"><tbody>${susRows}</tbody></table>` : ""}
       <div class="str-note" style="margin-top:8px;">${esc(d.note)} 本次回溯已写入审计链。</div>`;
   }catch(e){ box.innerHTML = `<div class="hit-box">回溯筛查失败：${esc(errText(e))}</div>`; }

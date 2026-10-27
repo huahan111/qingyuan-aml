@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from .common import (CASH_IN, CASH_TYPES, CROSS_TYPES, TRANSFER_IN, amt, is_in,
                      is_out, parse_dt, parse_open_date, purpose, tx_type)
 from .registry import rule
-from .sanctions import MOCK_SANCTION_LIST
+from .sanctions import fast_hit
 
 @rule("R001")
 def check_r001(txs, cust, params):
@@ -117,25 +117,32 @@ def check_r004(txs, cust, params):
 
 @rule("R005")
 def check_r005(txs, cust, params):
-    # 名单匹配只做"名单项 ⊆ 客户名/对手方"的单向包含；客户名称为空或过短时不予匹配
-    #（空串是任何字符串的子串，历史上因此把无姓名客户误判为命中名单——身份不明走 R017）。
+    # 名单匹配走真实名单库（联合国 + OFAC），只做"名单项 ⊆ 客户名/对手方"的单向包含；
+    # 名称为空或过短时不予匹配（空串是任何字符串的子串，历史上因此把无姓名客户误判为命中——
+    # 身份不明走 R017）。
     name = (cust.get("name") or "").strip()
     if len(name) >= 2:
-        for s in MOCK_SANCTION_LIST:
-            if s in name:
-                return {"triggered": True,
-                        "desc": f"客户名称命中制裁/涉恐名单（模拟匹配：{s}），应立即冻结并24小时内复核",
-                        "params_found": {"matched": s}}
+        d = fast_hit(name)
+        if d:
+            return {"triggered": True,
+                    "desc": f"客户名称命中{d['list']}（{d['entry_id']} {d['name']}），"
+                            f"按名单类型处置：{d['policy']['tier']}，先限制后核验，不经 AI 诊断",
+                    "params_found": {"matched": d["name"], "entry_id": d["entry_id"],
+                                     "list": d["list"], "program": d["program"],
+                                     "matched_name": d["matched_name"]}}
     # 交易对手方命中
     for t in txs:
         cp = (t.get("counterparty") or "").strip()
         if len(cp) < 2:
             continue
-        for s in MOCK_SANCTION_LIST:
-            if s in cp:
-                return {"triggered": True,
-                        "desc": f"交易对手方「{t['counterparty']}」命中制裁/涉恐名单",
-                        "params_found": {"matched": s, "counterparty": t["counterparty"]}}
+        d = fast_hit(cp)
+        if d:
+            return {"triggered": True,
+                    "desc": f"交易对手方「{t['counterparty']}」命中{d['list']}"
+                            f"（{d['entry_id']} {d['name']}），按名单类型处置：{d['policy']['tier']}",
+                    "params_found": {"matched": d["name"], "entry_id": d["entry_id"],
+                                     "list": d["list"], "program": d["program"],
+                                     "counterparty": t["counterparty"]}}
     return None
 
 

@@ -86,7 +86,9 @@ supersedes-authorization checks, and the privacy red line (ID numbers masked in 
 |---|---|
 | CAMLMAC XML / XSD validation, official code tables | Requires the official interface spec distributed to institutions |
 | PBOC dedicated line / front-end processor / digital certificates / real receipts | Institution onboarding only |
-| Real sanction lists, public-security identity verification | Institution channels only (mock library of 3 entries, substring matching) |
+| Pinyin / transliteration engine for Chinese names | Real UN + OFAC lists are shipped (20,405 entries), but matching a Chinese name against Latin-script entries needs a transliteration engine; only 15 curated Chinese aliases are bundled |
+| Public-security identity verification | Institution channels only |
+| Live list subscription / versioning | Lists are a bundled snapshot (`backend/scripts/fetch_sanctions.py` refreshes them); no incremental back-screening by list version |
 | Production auth / RBAC | Out of MVP scope; audit actor is honestly labeled "unauthenticated" |
 | Production database | Single-worker SQLite by design (demo); swap for PostgreSQL before any real load |
 

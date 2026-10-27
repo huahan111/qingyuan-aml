@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-10-27T15:07:17+00:00",
+  "total_entries": 20405,
+  "total_aliases": 22748,
+  "zh_alias_count": 0,
+  "sources": [
+    {
+      "name": "联合国安理会综合名单（UN Consolidated List）",
+      "entries": 1007,
+      "url": "https://scsanctions.un.org/resources/xml/en/consolidated.xml",
+      "bytes": 2176094,
+      "sha256": "bece99fd69f66646ab90d70c2d057d6142df6ba6b8f1b0e41590e8a6af135fb5",
+      "retrieved_at": "2026-10-27T15:07:04+00:00"
+    },
+    {
+      "name": "OFAC SDN（含别名表 alt.csv）",
+      "entries": 19471,
+      "url": "https://www.treasury.gov/ofac/downloads/sdn.csv",
+      "bytes": 5744136,
+      "sha256": "96dade5a1cde8c9746937b4859ad75d8f2a34eed1a4046cc1f2240a830f70bda",
+      "retrieved_at": "2026-10-27T15:07:11+00:00",
+      "alt_csv": {
+        "url": "https://www.treasury.gov/ofac/downloads/alt.csv",
+        "sha256": "e489fe41709a1d38693c16be8448d55a05cd4b39c9c2ffa98fbcc76bb5ec8050"
+      }
+    }
+  ],
+  "file_size": 3274861,
+  "license_note": "联合国名单与 OFAC 名单均为公开数据，可自由查阅转载；OFAC 数据为美国政府公开出版物。本仓库仅存派生快照，不主张任何权利。",
+  "refresh": "python3 backend/scripts/fetch_sanctions.py（建议每次演示前刷新一次）"
+}

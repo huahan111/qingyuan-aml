@@ -54,7 +54,7 @@ class AuditChainTest(unittest.TestCase):
                               object_type="submission", object_id="RX-20260101-00001",
                               detail={"case_id": "BLOCK-01"})
             r2 = audit.record(conn, actor="李四", action="名单筛查",
-                              object_type="screening", object_id="恐怖组织A",
+                              object_type="screening", object_id="东伊运",
                               detail={"hit": True})
             self.assertEqual(r1["seq"], 1)
             self.assertEqual(r2["seq"], 2)

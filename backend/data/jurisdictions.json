@@ -1,0 +1,66 @@
+{
+  "_meta": {
+    "what": "地区风险表：FATF 高风险（呼吁采取行动）与应加强监控名单",
+    "as_of": "2026-06-19",
+    "source": "FATF 第 34 届第 6 次全会公开声明（巴黎，2026-06-19）",
+    "url": "https://www.fatf-gafi.org/en/publications/High-risk-and-other-monitored-jurisdictions/call-for-action-june-2026.html",
+    "change_log": "2026-06：新增波黑、伊拉克入灰名单；阿尔及利亚、纳米比亚退出灰名单；黑名单维持朝鲜、伊朗、缅甸三国。",
+    "boundary": "本表是 2026 年 6 月快照，FATF 每年三次全会后更新，用前必须核对官网；不要把本表当成永久结论。",
+    "not_listed_note": "俄罗斯不在 FATF 任何名单上（其成员资格自 2023 年起被暂停），但在 OFAC/EU 等单边制裁范围内。两套口径不能混为一谈：前者是反洗钱体系缺陷，后者是定向金融制裁。"
+  },
+  "tiers": {
+    "call_for_action": {
+      "label": "FATF 高风险 · 呼吁采取行动（黑名单）",
+      "risk_level": "高",
+      "one_strike": false,
+      "measures": "强化尽职调查；对朝鲜、伊朗按 FATF 要求采取反制措施（限制或终止业务关系、关闭代理行、拒绝特定交易）；但不是见名即拒，需按风险为本逐案判断并留痕。",
+      "basis": "FATF 公开声明；《反洗钱法》第四十条；人民银行〔2026〕第 1 号令第十条（强化尽职调查）"
+    },
+    "increased_monitoring": {
+      "label": "FATF 应加强监控（灰名单）",
+      "risk_level": "中高",
+      "one_strike": false,
+      "measures": "强化尽职调查（EDD）：核实资金来源与用途、提高审批层级、缩短复评周期、提高交易监测灵敏度。",
+      "basis": "FATF 公开声明；风险为本原则"
+    },
+    "normal": {
+      "label": "一般地区",
+      "risk_level": "常规",
+      "one_strike": false,
+      "measures": "标准尽职调查与常规监测。",
+      "basis": "风险为本原则"
+    }
+  },
+  "jurisdictions": [
+    {"zh": "朝鲜", "en": "Democratic People's Republic of Korea", "code": "KP", "tier": "call_for_action",
+     "note": "FATF 要求采取反制措施：终止代理行关系、关闭朝鲜银行分支、限制与朝鲜主体的业务往来；同时属联合国安理会 1718 委员会制裁范围。"},
+    {"zh": "伊朗", "en": "Iran", "code": "IR", "tier": "call_for_action",
+     "note": "FATF 要求采取反制措施；属联合国安理会 2231 委员会相关制裁范围。"},
+    {"zh": "缅甸", "en": "Myanmar", "code": "MM", "tier": "call_for_action",
+     "note": "2026 年 6 月全会更新公开声明，维持高风险认定。"},
+
+    {"zh": "安哥拉", "en": "Angola", "code": "AO", "tier": "increased_monitoring", "note": ""},
+    {"zh": "玻利维亚", "en": "Bolivia", "code": "BO", "tier": "increased_monitoring", "note": ""},
+    {"zh": "波黑", "en": "Bosnia and Herzegovina", "code": "BA", "tier": "increased_monitoring", "note": "2026 年 6 月新增。"},
+    {"zh": "保加利亚", "en": "Bulgaria", "code": "BG", "tier": "increased_monitoring", "note": ""},
+    {"zh": "喀麦隆", "en": "Cameroon", "code": "CM", "tier": "increased_monitoring", "note": ""},
+    {"zh": "科特迪瓦", "en": "Côte d'Ivoire", "code": "CI", "tier": "increased_monitoring", "note": ""},
+    {"zh": "刚果（金）", "en": "Democratic Republic of the Congo", "code": "CD", "tier": "increased_monitoring", "note": ""},
+    {"zh": "海地", "en": "Haiti", "code": "HT", "tier": "increased_monitoring", "note": ""},
+    {"zh": "伊拉克", "en": "Iraq", "code": "IQ", "tier": "increased_monitoring", "note": "2026 年 6 月新增。"},
+    {"zh": "肯尼亚", "en": "Kenya", "code": "KE", "tier": "increased_monitoring", "note": ""},
+    {"zh": "科威特", "en": "Kuwait", "code": "KW", "tier": "increased_monitoring", "note": ""},
+    {"zh": "老挝", "en": "Lao PDR", "code": "LA", "tier": "increased_monitoring", "note": ""},
+    {"zh": "黎巴嫩", "en": "Lebanon", "code": "LB", "tier": "increased_monitoring", "note": ""},
+    {"zh": "摩纳哥", "en": "Monaco", "code": "MC", "tier": "increased_monitoring", "note": ""},
+    {"zh": "尼泊尔", "en": "Nepal", "code": "NP", "tier": "increased_monitoring", "note": ""},
+    {"zh": "巴布亚新几内亚", "en": "Papua New Guinea", "code": "PG", "tier": "increased_monitoring", "note": ""},
+    {"zh": "南苏丹", "en": "South Sudan", "code": "SS", "tier": "increased_monitoring", "note": ""},
+    {"zh": "叙利亚", "en": "Syria", "code": "SY", "tier": "increased_monitoring", "note": ""},
+    {"zh": "委内瑞拉", "en": "Venezuela", "code": "VE", "tier": "increased_monitoring", "note": ""},
+    {"zh": "越南", "en": "Vietnam", "code": "VN", "tier": "increased_monitoring", "note": ""},
+    {"zh": "英属维尔京群岛", "en": "British Virgin Islands", "code": "VG", "tier": "increased_monitoring",
+     "note": "离岸公司注册地，跨境股权穿透时重点关注实际控制人。"},
+    {"zh": "也门", "en": "Yemen", "code": "YE", "tier": "increased_monitoring", "note": ""}
+  ]
+}

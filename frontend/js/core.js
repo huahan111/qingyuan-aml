@@ -207,7 +207,7 @@ const PAGE_META = {
   workbench: ["工作台", "选案例 → 规则 + AI 研判 → 三向分流 → 生成 STR"],
   flow: ["全流程演示", "扫描识别 → 预警筛选 → 研判处置 → STR 生成 → 预览签署 → 复核授权 → 报送人行"],
   alerts: ["可疑交易预警", "规则引擎触发 · AI 预诊断后按风险分级"],
-  screening: ["名单筛查", "制裁 / 涉恐名单 · 命中即冻结，不经 AI"],
+  screening: ["名单筛查", "联合国安理会综合名单 + OFAC SDN 真实名单 · 命中即先限制后核验"],
   ctr: ["大额交易报告", "客观标准：达到阈值即报，不判断可疑"],
   cdd: ["客户尽职调查", "识别 → 核实 → 留痕 · 可发起对公/个人尽调查询"],
   rating: ["客户风险评级", "四维模型实时计算 · 预警回写 · 升降级与 EDD"],
@@ -222,6 +222,7 @@ function showPage(name){
   document.getElementById("pageSub").textContent = meta[1];
   if(name==="flow" && state.flowStage===0) flowReset();
   if(name==="alerts") renderAlerts();
+  if(name==="screening") initScreening();
   if(name==="ctr") loadCtr();
   if(name==="rating") renderRating();
   if(name==="rules") loadRules();

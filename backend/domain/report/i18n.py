@@ -21,7 +21,6 @@ NAME_MAP = {
     "XX商贸有限公司": "XX Trading Co., Ltd.",
     "YY建材贸易有限公司": "YY Building Materials Trading Co., Ltd.",
     "ZZ供应链有限公司": "ZZ Supply Chain Co., Ltd.",
-    "恐怖组织A关联人某某": "Individual linked to Terrorist Organisation A (name withheld)",
 }
 
 OCCUPATION_MAP = {
@@ -37,6 +36,7 @@ OCCUPATION_MAP = {
     "医药代表": "Pharmaceutical representative",
     "建筑工人（海外）": "Construction worker (overseas)",
     "建材批发": "Building materials wholesale",
+    "外贸个体户": "Sole proprietor (foreign trade)",
     "批发零售（供应链）": "Wholesale and retail (supply chain)",
     "待核实": "To be verified",
 }
@@ -58,6 +58,7 @@ ENTITY_MAP = {
     "员工工资户": "Employee payroll account", "验资户": "Capital verification account",
     "社保基金": "Social security fund", "税务局": "Tax authority",
     "某OTC商户": "An OTC merchant", "本人": "Self",
+    "东伊运": "Eastern Turkistan Islamic Movement (ETIM)",
 }
 
 TYPE_MAP = {

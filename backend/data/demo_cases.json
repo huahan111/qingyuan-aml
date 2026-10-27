@@ -1580,34 +1580,34 @@
     },
     {
       "case_id": "BLOCK-05",
-      "title": "客户名称命中制裁/涉恐名单",
+      "title": "跨境汇款对手方命中联合国涉恐名单",
       "category": "intercept",
       "customer_info": {
-        "name": "恐怖组织A关联人某某（个人）",
-        "age": 39,
-        "occupation": "无固定职业",
-        "employer": "—",
-        "income": "无固定收入",
-        "open_date": "2026-08",
-        "risk_level": "高",
+        "name": "李某（个人）",
+        "age": 34,
+        "occupation": "外贸个体户",
+        "employer": "自营",
+        "income": "月均结汇约4万元",
+        "open_date": "2022-04",
+        "risk_level": "中",
         "tags": [
-          "名单命中",
-          "新开户",
-          "无固定职业"
+          "跨境汇款",
+          "对手方名单命中",
+          "客户本人无不良记录"
         ]
       },
       "transactions": [
         {
           "date": "2026-10-09",
           "time": "15:30",
-          "type": "转账收入",
-          "amount": 1000,
-          "counterparty": "张某",
-          "channel": "手机银行",
-          "summary": "",
-          "purpose": "个人转入",
-          "currency": "CNY",
-          "amount_cny": 1000
+          "type": "跨境支出",
+          "amount": 4000,
+          "counterparty": "东伊运",
+          "channel": "网银",
+          "summary": "INV-20261009",
+          "purpose": "货款",
+          "currency": "USD",
+          "amount_cny": 28000
         }
       ],
       "expected_conclusion": "拦截",
@@ -1619,7 +1619,7 @@
       "trace_chain": [
         {
           "rule_id": "R005",
-          "trigger_desc": "客户名称命中模拟制裁/涉恐名单「恐怖组织A」，按特别预防措施先冻结、后核验，不经 AI 研判",
+          "trigger_desc": "交易对手方「东伊运」经归一化后与联合国安理会综合名单 UN-QDe.088 EASTERN TURKISTAN ISLAMIC MOVEMENT (ETIM) 的中译名一致（别名匹配 0.95），按定向金融制裁先冻结、后核验，不经 AI 研判",
           "legal_clauses": [
             {
               "reg_code": "AML_LAW_2025",

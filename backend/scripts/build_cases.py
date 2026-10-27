@@ -437,20 +437,20 @@ CASES.append({
 })
 
 CASES.append({
-    "case_id": "BLOCK-05", "title": "客户名称命中制裁/涉恐名单", "category": "intercept",
+    "case_id": "BLOCK-05", "title": "跨境汇款对手方命中联合国涉恐名单", "category": "intercept",
     "customer_info": {
-        "name": "恐怖组织A关联人某某（个人）", "age": 39, "occupation": "无固定职业", "employer": "—",
-        "income": "无固定收入", "open_date": "2026-08", "risk_level": "高",
-        "tags": ["名单命中", "新开户", "无固定职业"]
+        "name": "李某（个人）", "age": 34, "occupation": "外贸个体户", "employer": "自营",
+        "income": "月均结汇约4万元", "open_date": "2022-04", "risk_level": "中",
+        "tags": ["跨境汇款", "对手方名单命中", "客户本人无不良记录"]
     },
     "transactions": [
-        {"date":"2026-10-09","time":"15:30","type":"转账收入","amount":1000,"counterparty":"张某","channel":"手机银行","summary":"个人转入"},
+        {"date":"2026-10-09","time":"15:30","type":"跨境支出","amount":4000,"counterparty":"东伊运","channel":"网银","summary":"INV-20261009","purpose":"货款","currency":"USD","amount_cny":28400},
     ],
     "expected_conclusion": "拦截",
     "rules_hit": ["R005"],
     "official_type_no": "", "official_type_name": "",
     "trace_chain": [
-        make_trace("R005", "客户名称命中模拟制裁/涉恐名单「恐怖组织A」，按特别预防措施先冻结、后核验，不经 AI 研判",
+        make_trace("R005", "交易对手方「东伊运」经归一化后与联合国安理会综合名单 UN-QDe.088 EASTERN TURKISTAN ISLAMIC MOVEMENT (ETIM) 的中译名一致（别名匹配 0.95），按定向金融制裁先冻结、后核验，不经 AI 研判",
             [("AML_LAW_2025", "第四十条", "金融机构应当对涉嫌恐怖活动的名单进行监测，发现名单所列对象…"),
              ("PBOC_AML_SP_2026_1", "第三条", "金融机构应当对名单所列对象采取特别预防措施。"),
              ("PBOC_AML_SP_2026_1", "第七条", "金融机构应当立即停止为名单所列对象提供金融服务…")],
@@ -591,11 +591,12 @@ PURPOSE_SPLIT = {
     ("BLOCK-07", "USDT买入"): ("虚拟货币交易", "USDT买入"),
     ("BLOCK-07", "买U 8000"): ("虚拟货币交易", "买U 8000"),
     ("BLOCK-08", "个人转入"): ("个人转入", ""),
+    ("BLOCK-05", "INV-20261009"): ("货款", "INV-20261009"),
 }
 
 # 外币交易：case_id -> 币种；amount 记原币，amount_cny 按 fx_rates.json 的取整汇率折算
 # （汇率文件同时给前端展示用，界面上的"演示折算汇率"与数据里的金额永远一致）
-FX = {"GREY-02": "USD", "GREY-03": "EUR"}
+FX = {"GREY-02": "USD", "GREY-03": "EUR", "BLOCK-05": "USD"}
 
 
 def _fx_rate(currency):

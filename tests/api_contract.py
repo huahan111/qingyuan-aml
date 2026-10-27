@@ -180,17 +180,25 @@ class ContractTest(unittest.TestCase):
         self.assertEqual(len(r.json()["regulations"]), 8)
 
     def test_06_screening_and_ctr(self):
-        # 单字符查询一律拒绝（历史上 1 个字符即可命中「恐怖组织A」）
-        r = CLIENT.get("/api/screening", params={"q": "恐"})
+        # 单字符查询一律拒绝（历史上 1 个字符即可命中名单）
+        r = CLIENT.get("/api/screening", params={"q": "哈"})
         self.assertEqual(r.status_code, 400)
         r = CLIENT.get("/api/screening", params={"q": "李某"})
         self.assertEqual(r.status_code, 200)
         self.assertIn("hit", r.json())
         self.assertIn("matches", r.json())
         self.assertFalse(r.json()["hit"])
-        r = CLIENT.get("/api/screening", params={"q": "恐怖组织A"})
+        # 真实名单库（联合国 + OFAC）已加载，条数应在万级
+        r = CLIENT.get("/api/screening", params={"q": "哈马斯"})
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.json()["hit"])
+        self.assertGreater(r.json()["list_size"], 10000)
+        r = CLIENT.get("/api/sanctions/meta")
+        self.assertEqual(r.status_code, 200)
+        meta = r.json()
+        self.assertGreater(meta["total"], 10000)
+        self.assertEqual(len(meta["sources"]), 2)
+        self.assertTrue(meta["policy_table"])
         r = CLIENT.get("/api/ctr")
         self.assertEqual(r.status_code, 200)
         self.assertIn("rows", r.json())
@@ -627,38 +635,65 @@ class ContractTest(unittest.TestCase):
         m._rate_buckets.clear()
 
     def test_17_screening_fuzzy(self):
-        """名单筛查 v2：打分制分层（命中/疑似/未命中）+ 别名 + 回溯筛查。"""
-        # 完全一致 → 命中
-        d = CLIENT.get("/api/screening", params={"q": "恐怖组织A"}).json()
+        """名单筛查 v3：真实名单（联合国 + OFAC）+ 打分制分层 + 别名 + 处置分级 + 回溯筛查。"""
+        # 完全一致 → 命中（拉丁原名）
+        d = CLIENT.get("/api/screening", params={"q": "HAMAS"}).json()
         self.assertTrue(d["hit"])
         self.assertEqual(d["matches"][0]["score"], 1.0)
-        # 别名一致 → 命中
-        d = CLIENT.get("/api/screening", params={"q": "恐怖组织甲"}).json()
-        self.assertTrue(d["hit"])
-        # 名单主体整体出现在客户名（与 R005 口径一致）→ 命中
-        d = CLIENT.get("/api/screening", params={"q": "恐怖组织A关联人某某"}).json()
+        # 中译名（别名）→ 命中 0.95
+        d = CLIENT.get("/api/screening", params={"q": "哈马斯"}).json()
         self.assertTrue(d["hit"])
         self.assertEqual(d["matches"][0]["score"], 0.95)
-        # 错别字 / 缺前缀 → 疑似（转人工，不直接处置）
-        d = CLIENT.get("/api/screening", params={"q": "某洗钱团伙"}).json()
-        self.assertFalse(d["hit"])
-        self.assertEqual(d["matches"][0]["band"], "疑似")
-        d = CLIENT.get("/api/screening", params={"q": "恐怖组纸A"}).json()
+        self.assertEqual(d["matches"][0]["match_type"], "别名一致")
+        # 联合国名单命中，处置口径必须是"定向金融制裁"，不能按 OFAC 口径
+        d = CLIENT.get("/api/screening", params={"q": "东伊运"}).json()
+        self.assertTrue(d["hit"])
+        self.assertEqual(d["matches"][0]["source"], "UN")
+        self.assertEqual(d["matches"][0]["policy"]["tier"], "定向金融制裁（联合国）")
+        self.assertTrue(d["matches"][0]["policy"]["one_strike"])
+        # 名单主体整体出现在客户名（与 R005 口径一致）→ 命中 0.95
+        d = CLIENT.get("/api/screening", params={"q": "东伊运关联人某某"}).json()
+        self.assertTrue(d["hit"])
+        self.assertEqual(d["matches"][0]["score"], 0.95)
+        # 错一个字母 → 模糊命中，不再要求人工核验
+        d = CLIENT.get("/api/screening", params={"q": "HIZBALAH"}).json()
+        self.assertTrue(d["hit"])
+        self.assertTrue(d["matches"][0]["match_type"].startswith("模糊相似"))
+        # 片段 → 疑似（转人工，不直接处置）
+        d = CLIENT.get("/api/screening", params={"q": "BIN LADIN"}).json()
         self.assertFalse(d["hit"])
         self.assertTrue(d["matches"])
-        # 普通词片段不再误报命中（v1 子串包含缺陷）
+        # 普通词/无关中文名不再误报（v1 子串包含缺陷）
         d = CLIENT.get("/api/screening", params={"q": "组织"}).json()
         self.assertFalse(d["hit"])
-        self.assertEqual(d["matches"][0]["score"], 0.7)
-        # 回溯筛查：覆盖演示案例主体，BLOCK-05（名单关联人）命中，且入审计链
+        d = CLIENT.get("/api/screening", params={"q": "张三"}).json()
+        self.assertFalse(d["hit"])
+        # 回溯筛查：客户 + 交易对手全量复筛，BLOCK-05（对手方命中联合国名单）应命中
         r = CLIENT.post("/api/screening/back-screening")
         self.assertEqual(r.status_code, 200)
         b = r.json()
         self.assertGreaterEqual(b["screened"], 17)
         self.assertTrue(any(h["case_id"] == "BLOCK-05" for h in b["hits"]))
+        self.assertTrue(all(h.get("matched_id") for h in b["hits"]))
         self.assertIn("thresholds", b)
         recs = CLIENT.get("/api/audit", params={"action": "回溯筛查"}).json()
         self.assertGreaterEqual(recs["total"], 1)
+
+    def test_17b_jurisdiction(self):
+        """地区风险：FATF 黑/灰名单与单边制裁要分开，俄罗斯不在 FATF 名单。"""
+        d = CLIENT.get("/api/jurisdiction", params={"q": "伊朗"}).json()
+        self.assertTrue(d["found"])
+        self.assertEqual(d["tier"], "call_for_action")
+        self.assertFalse(d["one_strike"])
+        d = CLIENT.get("/api/jurisdiction", params={"q": "越南"}).json()
+        self.assertEqual(d["tier"], "increased_monitoring")
+        d = CLIENT.get("/api/jurisdiction", params={"q": "俄罗斯"}).json()
+        self.assertFalse(d["found"])
+        self.assertEqual(d["tier"], "normal")
+        ov = CLIENT.get("/api/jurisdiction").json()
+        self.assertEqual(len(ov["groups"][0]["items"]), 3)   # 黑名单 3 个
+        self.assertEqual(len(ov["groups"][1]["items"]), 22)  # 灰名单 22 个
+        self.assertGreater(ov["list_derived"]["russia_entries"], 0)
 
     def test_11_live_provider_signature(self):
         """Live 模式回归（P0-1）：available/diagnose 与 Mock 同签名，不再必然 500。

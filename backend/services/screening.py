@@ -1,155 +1,123 @@
-"""名单筛查 v2：打分制模糊匹配 + 别名 + 回溯筛查（替代 v1 的子串包含匹配）。
+"""名单筛查 v3：真实名单库（联合国安理会综合名单 + OFAC SDN）+ 处置分级。
 
-匹配层级（阈值可配，演示初值；命中判定与 R005 的"名单项⊆客户名"口径兼容）：
-- 完全命中（1.00）／别名一致（0.95）／名单项整体包含于查询对象（0.95）→ **命中**，先限制后核验
-- 高度疑似（≥0.80，模糊相似达到）→ **命中**（按命中处置）
-- 疑似（≥0.55，含"查询对象是名单项片段"的 0.70）→ 不处置，转人工核验
-- 低相似（<0.55）→ 不展示
+v1 教训：双向子串包含会把"组织""洗钱"这类普通词片段直接判命中。
+v2：改成打分制 + 片段降级为疑似，但名单只有 3 条模拟数据，等于没测过真名单。
+v3：接真实名单（约 2 万条、2.2 万个别名），索引 + 候选召回，中文靠人工整理的中译名映射。
 
-相似度 = 0.5×字符重合（Jaccard）+ 0.5×二元组 Dice；别名参与精确与模糊两种匹配。
-v1 教训：双向子串包含会把"组织""洗钱"这类普通词片段直接判命中——v2 把
-"查询对象只是名单项片段"降为疑似（0.70），不再直接处置。
-
-诚实边界：演示级实现——未含拼音/音译变体库与转写引擎（生产必须接入官方
-匹配引擎与名单版本管理）；名单为 3 条模拟数据，别名同为合成。
+诚实边界（README《演示边界清单》同步）：
+- 没有拼音/音译转写引擎：中文姓名对拉丁字母名单只能靠 zh_aliases.json 里那 15 个主体命中；
+- 没有名单版本管理与增量回溯（back_screen 是演示版，每次全量复筛）；
+- 阈值 0.80 / 0.55 是演示初值，生产必须按名单库官方匹配规范与误报率校准。
 """
-import re
-
-from domain.rules.sanctions import MOCK_SANCTION_LIST
-
-MIN_QUERY_LEN = 2
-HIT_THRESHOLD = 0.80        # ≥ 此值视为命中（处置）
-SUSPECT_THRESHOLD = 0.55    # ≥ 此值展示为疑似（转人工）
-BANDS = ((0.80, "高度疑似"), (0.55, "疑似"), (0.0, "低相似"))
-
-# 演示名单主体的别名/曾用名（合成）
-ALIASES = {
-    "恐怖组织A": ["恐怖组织甲"],
-    "制裁实体B": ["制裁实体乙"],
-    "XX洗钱团伙": ["XX洗钱集团"],
-}
+from domain import sanctions
+from domain.sanctions import loader as sanctions_loader
 
 
-def _norm(s: str) -> str:
-    s = re.sub(r"（(对公|个人|演示)）$", "", (s or "").strip())
-    return s.strip()
+def _meta():
+    st = sanctions_loader.stats()
+    return {
+        "total": st["total"],
+        "aliases": st["aliases_indexed"],
+        "generated_at": st["generated_at"],
+        "sources": [{"name": s.get("name", ""), "entries": s.get("entries", 0),
+                     "url": s.get("url", ""), "retrieved_at": s.get("retrieved_at", "")}
+                    for s in st["sources"]],
+        "zh_alias_count": st["zh_alias_count"],
+        "top_countries": st["countries"],
+    }
 
 
-def _bigrams(s: str):
-    return {s[i:i + 2] for i in range(len(s) - 1)} if len(s) > 1 else set()
-
-
-def _similarity(a: str, b: str) -> float:
-    if not a or not b:
-        return 0.0
-    A, B = set(a), set(b)
-    jaccard = len(A & B) / len(A | B) if (A | B) else 0.0
-    ga, gb = _bigrams(a), _bigrams(b)
-    dice = 2 * len(ga & gb) / (len(ga) + len(gb)) if ga and gb else 0.0
-    return round(0.5 * jaccard + 0.5 * dice, 3)
-
-
-def _band(score: float) -> str:
-    if score >= 0.95:
-        return "完全命中" if score >= 1.0 else "命中"
-    for threshold, name in BANDS:
-        if score >= threshold:
-            return name
-    return "低相似"
-
-
-def _best_match(query: str):
-    """对全名单打分，返回 (score, match_type, entry_name)；无有效匹配返回 None。"""
-    best = (0.0, "", "")
-    for entry in MOCK_SANCTION_LIST:
-        names = [entry] + ALIASES.get(entry, [])
-        for idx, name in enumerate(names):
-            score, mtype = 0.0, ""
-            if query == name:
-                score, mtype = 1.0, "完全一致"
-            elif name in query and len(name) >= MIN_QUERY_LEN:
-                score, mtype = 0.95, "名单主体整体出现在查询对象中"
-            elif query in name and len(query) >= MIN_QUERY_LEN:
-                score, mtype = 0.70, "查询对象仅为名单项片段（不直接判命中）"
-            else:
-                s = _similarity(query, name)
-                if s >= SUSPECT_THRESHOLD:
-                    score, mtype = s, "模糊相似（字符重合 + 二元组）"
-            if idx > 0 and query == name and score < 0.95:
-                score, mtype = 0.95, "别名一致"
-            if score > best[0]:
-                best = (score, mtype, entry)
-    return best if best[0] >= SUSPECT_THRESHOLD else None
+def _action_text(hit: bool, matches):
+    """按命中条目的名单类型给处置口径：联合国=法定冻结，OFAC=审查+清算行确认。"""
+    if not hit:
+        return "未命中"
+    un = [m for m in matches if m["source"] == "UN" and m["score"] >= sanctions.HIT_THRESHOLD]
+    ofac = [m for m in matches if m["source"] == "OFAC" and m["score"] >= sanctions.HIT_THRESHOLD]
+    parts = []
+    if un:
+        parts.append("命中联合国安理会综合名单：" + sanctions.policy_for({"src": "UN"})["measures"])
+    if ofac:
+        parts.append("命中 OFAC SDN：" + sanctions.policy_for({"src": "OFAC"})["measures"])
+    return "；".join(parts)
 
 
 def screen(q: str):
-    q = _norm(q)
+    q = (q or "").strip()
     if not q:
         raise ValueError("请输入筛查对象")
-    if len(q) < MIN_QUERY_LEN:
-        raise ValueError(f"筛查对象至少 {MIN_QUERY_LEN} 个字符")
-    match = _best_match(q)
-    matches, hit = [], False
-    if match:
-        score, mtype, entry = match
-        hit = score >= HIT_THRESHOLD
-        matches.append({"name": entry, "list": "境内法定名单（模拟）",
-                        "match_type": mtype, "score": score, "band": _band(score)})
+    if len(q) < sanctions.MIN_QUERY_LEN:
+        raise ValueError(f"筛查对象至少 {sanctions.MIN_QUERY_LEN} 个字符")
+
+    res = sanctions.search(q, top_k=5)
+    matches = res["matches"]
+    hit = res["hit"]
+
     if hit:
-        action = "命中即冻结账户，24 小时内人工复核，不经 AI 诊断"
-    elif match:
-        action = (f"未达命中阈值（{HIT_THRESHOLD}），按「疑似」转人工核验——"
-                  f"v1 的子串匹配会把普通词片段直接判命中，v2 已降级为疑似")
+        action = _action_text(True, matches)
+    elif matches:
+        action = (f"未达命中阈值（{sanctions.HIT_THRESHOLD}），按「疑似」转人工核验——"
+                  "v1 的片段匹配会把普通词直接判命中，v2 起已降级为疑似")
     else:
-        action = "未命中"
+        action = ("未命中。注意：中文姓名与拉丁字母名单之间需要拼音/音译转写，"
+                  "本演示只内置 15 个高知名度主体的中译名")
+
     return {
         "query": q,
         "hit": hit,
         "matches": matches,
-        "list_size": len(MOCK_SANCTION_LIST),
+        "list_size": _meta()["total"],
+        "list_meta": _meta(),
+        "candidates": res["candidates"],
+        "method": res["method"],
         "action": action,
-        "thresholds": {"hit": HIT_THRESHOLD, "suspect": SUSPECT_THRESHOLD,
-                       "note": "演示初值；生产应按名单库官方匹配规范校准"},
+        "thresholds": {"hit": sanctions.HIT_THRESHOLD, "suspect": sanctions.SUSPECT_THRESHOLD,
+                       "note": "演示初值；生产应按名单库官方匹配规范与本机构误报率校准"},
     }
 
 
 def back_screen(conn):
-    """回溯筛查：名单更新后对存量客户全量复筛（监管检查必看环节，演示实现）。
-
-    覆盖演示案例客户 + 已定性案例库主体；返回命中/疑似清单供人工处置。
-    """
+    """回溯筛查：名单更新后对存量客户全量复筛（监管检查必看环节，演示实现）。"""
     from case_store import load_dataset
     from infra.case_repo import list_library
 
     targets = []
+    seen = set()
+
+    def add(case_id, name, dimension):
+        name = (name or "").strip()
+        key = (case_id, dimension, name)
+        if name and key not in seen:
+            seen.add(key)
+            targets.append({"case_id": case_id, "name": name, "dimension": dimension})
+
     for c in load_dataset().get("cases", []):
-        name = _norm((c.get("customer_info") or {}).get("name", ""))
-        if name:
-            targets.append({"case_id": c["case_id"], "name": name})
+        add(c["case_id"], (c.get("customer_info") or {}).get("name"), "客户")
+        for t in c.get("transactions") or []:
+            add(c["case_id"], t.get("counterparty"), "交易对手")
     for row in list_library(conn):
-        name = _norm((row.get("customer_info") or {}).get("name", ""))
-        if name:
-            targets.append({"case_id": row["case_id"], "name": name})
+        add(row["case_id"], (row.get("customer_info") or {}).get("name"), "客户")
 
     hits, suspects = [], []
     for t in targets:
-        match = _best_match(t["name"])
-        if not match:
+        res = sanctions.search(t["name"], top_k=1)
+        if not res["matches"]:
             continue
-        score, mtype, entry = match
-        item = {**t, "matched": entry, "score": score, "match_type": mtype}
-        if score >= HIT_THRESHOLD:
-            hits.append(item)
-        else:
-            suspects.append(item)
+        m = res["matches"][0]
+        item = {**t, "matched": m["name"], "matched_id": m["entry_id"],
+                "list": m["list"], "program": m["program"], "score": m["score"],
+                "match_type": m["match_type"], "policy": m["policy"]}
+        (hits if m["score"] >= sanctions.HIT_THRESHOLD else suspects).append(item)
     hits.sort(key=lambda x: -x["score"])
     suspects.sort(key=lambda x: -x["score"])
+    meta = _meta()
     return {
         "screened": len(targets),
         "hits": hits,
         "suspects": suspects[:10],
-        "list_size": len(MOCK_SANCTION_LIST),
-        "thresholds": {"hit": HIT_THRESHOLD, "suspect": SUSPECT_THRESHOLD},
-        "note": "回溯筛查：名单更新后对存量客户全量复筛（演示实现，覆盖演示案例与已定性库主体）；"
-                "命中项应立即按名单处置流程办理并留痕。",
+        "list_size": meta["total"],
+        "list_meta": meta,
+        "thresholds": {"hit": sanctions.HIT_THRESHOLD, "suspect": sanctions.SUSPECT_THRESHOLD},
+        "note": f"回溯筛查：对存量 {len(targets)} 个主体（客户 + 交易对手，去重后）按当前名单库"
+                f"（{meta['total']} 条）全量复筛；命中的按名单类型分别处置"
+                "（联合国=法定冻结，OFAC=加强审查并与清算行确认），全过程留痕。",
     }
