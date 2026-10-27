@@ -107,6 +107,55 @@ async function resetDemo(){
   }catch(e){ toast("重置失败：" + e.message); }
 }
 
+/* ============ 演示边界说明 ============
+   线上是只读演示站：不接人行报送通道、不写业务库。相关按钮点了不能"什么都不说"，
+   否则用户会以为是坏了。统一用一张说明卡讲清楚：哪些做完了、哪些没接、怎么接。 */
+const DEMO_LIMITS = {
+  submit: {
+    title: "「报送人行」只做到这一步，不是坏了",
+    done: "本页已经真跑通：扫描 → 预警 → 规则+AI 研判 → STR 中英正文 → 62 项要素 → 要素报文草稿 → 三级授权签字 → 审计链留痕。",
+    missing: "没接的是出网这一段：向人行报送要走 CAMLMAC 报文网关、机构数字证书与签名服务、专线与前置机。这三样属于机构资质和生产环境，演示站没有，也不该有。",
+    so: "所以报告会停在「已签字待报送」，不生成正式回执——这是刻意留的边界，不是失败。报文结构已按 62 项要素排好，后续拿到机构证书与网关参数，把草稿通道换成生产通道即可接上。",
+    local: "想在本地看完整写入链路（含模拟回执）：./run.sh 启动后可写库。"
+  },
+  library: {
+    title: "这个操作要写库，演示站已锁",
+    done: "看案例、跑研判、出报告、查溯源这些只读功能都正常。",
+    missing: "只读模式关闭了所有写接口（防止访客之间互相污染演示数据），所以「沉淀负样本」「报送」「重置数据」这类动作不会生效。",
+    so: "它不是坏，是被锁了。",
+    local: "本地 ./run.sh 或 Codespaces 启动后可写，能完整走一遍负样本沉淀。"
+  }
+};
+
+function showDemoLimit(kind){
+  const c = DEMO_LIMITS[kind];
+  if(!c) return;
+  let mask = document.getElementById("demoLimitMask");
+  if(!mask){
+    mask = document.createElement("div");
+    mask.id = "demoLimitMask";
+    mask.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:300;"
+      + "display:none;align-items:center;justify-content:center;padding:20px;";
+    mask.addEventListener("click", e=>{ if(e.target === mask) mask.style.display = "none"; });
+    document.body.appendChild(mask);
+  }
+  mask.innerHTML = `
+    <div style="background:#fff;border-radius:12px;max-width:560px;width:100%;padding:20px 22px;
+                box-shadow:0 18px 48px rgba(15,23,42,.28);">
+      <div style="font-size:16px;font-weight:700;color:#0f172a;margin-bottom:10px;">${esc(c.title)}</div>
+      <div style="font-size:13px;line-height:1.85;color:#334155;">
+        <p style="margin-bottom:8px;"><b style="color:#166534;">已经做完的：</b>${esc(c.done)}</p>
+        <p style="margin-bottom:8px;"><b style="color:#b45309;">还没接的：</b>${esc(c.missing)}</p>
+        <p style="margin-bottom:8px;">${esc(c.so)}</p>
+        <p style="font-size:12px;color:#64748b;">${esc(c.local)}</p>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">
+        <button class="btn small" onclick="document.getElementById('demoLimitMask').style.display='none'">知道了</button>
+      </div>
+    </div>`;
+  mask.style.display = "flex";
+}
+
 /* ================= 导航 ================= */
 const PAGE_META = {
   workbench: ["工作台", "选案例 → 规则 + AI 研判 → 三向分流 → 生成 STR"],

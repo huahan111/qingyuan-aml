@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
 <title>清源AML · 反洗钱智能监测平台</title>
-<link rel="stylesheet" href="/static/css/app.css?v=16">
+<link rel="stylesheet" href="/static/css/app.css?v=17">
 </head>
 <body>
 
@@ -80,6 +80,12 @@
 
     <!-- ============ 全流程演示 ============ -->
     <section id="page-flow" class="page">
+      <div class="note-bar" style="margin-bottom:12px;">
+        <b>这一步的边界先说清：</b>前六步（扫描 → 预警 → 研判 → STR → 签署 → 三级授权）在本页真实跑通；
+        <b>第⑦步「报送人行」止于生成报文与留痕</b>——向人行报送需要 CAMLMAC 报文网关、机构数字证书与签名服务、
+        专线与前置机，属机构资质与生产环境，本演示站未接入，因此报告会停在「已签字待报送」。
+        接入上述通道后即可正式报送，报文结构已按 3 号令 62 项要素排好。
+      </div>
       <div class="card">
         <div class="flow-body">
           <div class="steps" id="flowSteps">
@@ -339,16 +345,16 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="/static/js/config.js?v=16"></script>
-<script src="/static/js/core.js?v=16"></script>
-<script src="/static/js/login.js?v=16"></script>
-<script src="/static/js/dashboard.js?v=16"></script>
-<script src="/static/js/submissions.js?v=16"></script>
-<script src="/static/js/cases.js?v=16"></script>
-<script src="/static/js/report.js?v=16"></script>
-<script src="/static/js/auth.js?v=16"></script>
-<script src="/static/js/flow.js?v=16"></script>
-<script src="/static/js/cdd.js?v=16"></script>
-<script src="/static/js/app.js?v=16"></script>
+<script src="/static/js/config.js?v=17"></script>
+<script src="/static/js/core.js?v=17"></script>
+<script src="/static/js/login.js?v=17"></script>
+<script src="/static/js/dashboard.js?v=17"></script>
+<script src="/static/js/submissions.js?v=17"></script>
+<script src="/static/js/cases.js?v=17"></script>
+<script src="/static/js/report.js?v=17"></script>
+<script src="/static/js/auth.js?v=17"></script>
+<script src="/static/js/flow.js?v=17"></script>
+<script src="/static/js/cdd.js?v=17"></script>
+<script src="/static/js/app.js?v=17"></script>
 </body>
 </html>

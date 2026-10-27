@@ -183,6 +183,8 @@ async function flowSubmit(){
   if(!SIGN_ROLES.every(r=>state.signatures[r.key])) return flowAuth();
   const rep = state.flowReport;
   if(!rep) return flowStr();
+  // 只读演示：报送要写台账并出网，这里直接给边界说明，不假装失败
+  if(state.readOnly && !state.submitted){ showDemoLimit("submit"); return; }
   if(!state.submitted){
     // 先写台账成功、再进入"已报送"环节：失败停留在签字环节可重试
     state.report = rep;

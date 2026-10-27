@@ -90,7 +90,7 @@ function renderSimilarCases(sim){
 }
 
 async function recordDisposition(cid, btn){
-  if(state.readOnly){ toast("只读演示环境不能写入案例库"); return; }
+  if(state.readOnly){ showDemoLimit("library"); return; }
   const reason = prompt("请输入人工排除理由（写入案例库，供规则有效性统计）",
     "合同、发票、固定上下游与经营规模匹配，排除可疑");
   if(reason === null) return;

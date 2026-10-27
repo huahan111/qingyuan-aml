@@ -53,6 +53,8 @@ function submitReport(){
   document.getElementById("signMask").classList.add("show");
 }
 async function doSubmitReport(){
+  // 只读演示：不写台账、不出网，给边界说明而不是"写入失败"
+  if(state.readOnly){ closeSign(); showDemoLimit("submit"); return; }
   // 先写台账成功、再置「已报送」状态：写库失败时报告保持"已签字待报送"，
   // 提交按钮仍可用可重试（此前先置状态后异步写库，失败会把报告永久卡在
   // "已报送"且台账无记录，且没有任何重试入口）
