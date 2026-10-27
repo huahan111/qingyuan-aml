@@ -171,7 +171,9 @@ function flowAuth(){
       姓名、工号、岗位与时间写入报告。</p>
     ${block}
     ${state.submitted
-      ? `<div class="flow-done" style="margin-top:14px;">✓ 已提交报送 · 回执 ${esc(state.receiptNo)} · ${esc(state.submittedAt)}</div>
+      ? `<div class="flow-done" style="margin-top:14px;">✓ ${state.readOnly ? "演示送达完成" : "已提交报送"} · 回执 ${esc(state.receiptNo)} · ${esc(state.submittedAt)}</div>
+         ${state.readOnly ? `<div class="note-bar warn" style="margin-top:10px;">演示环境说明：本次送达<b>未连接人行报文系统（CAMLMAC）、未写入业务台账</b>，
+           回执号为本地模拟生成（RX-DEMO 前缀），仅用于演示闭环，不具备报送效力。接入网关、机构证书签名与专线后可正式报送。</div>` : ""}
          <div style="margin-top:12px;"><button class="btn" onclick="flowSubmit()">查看报文与回执 →</button></div>`
       : done
         ? `<div class="note-bar" style="margin-top:14px;"><b>三级授权已完成，报告已定稿。</b>签字不等于提交，请确认提交报送——提交后不可撤回，5 个工作日报送时限监控开始。</div>
@@ -183,8 +185,15 @@ async function flowSubmit(){
   if(!SIGN_ROLES.every(r=>state.signatures[r.key])) return flowAuth();
   const rep = state.flowReport;
   if(!rep) return flowStr();
-  // 只读演示：报送要写台账并出网，这里直接给边界说明，不假装失败
-  if(state.readOnly && !state.submitted){ showDemoLimit("submit"); return; }
+  // 只读演示：走"演示送达"，拿到模拟回执后继续往下走，流程不断
+  if(state.readOnly && !state.submitted){
+    state.report = rep;
+    const rec = demoSubmitRecord(rep, state.signatures);
+    state.submitted = true;
+    state.receiptNo = rec.receipt_no;
+    state.submittedAt = rec.submitted_at;
+    toast(`演示送达完成 · 模拟回执 ${rec.receipt_no}（未连接人行报文系统，未入库）`);
+  }
   if(!state.submitted){
     // 先写台账成功、再进入"已报送"环节：失败停留在签字环节可重试
     state.report = rep;
@@ -222,7 +231,13 @@ async function flowSubmit(){
     const r = document.getElementById("receipt");
     if(!r || !r.isConnected) return;
     const dl = rep.filing_deadline ? ` · 法定报送时限 ${rep.filing_deadline}` : "";
-    r.innerHTML = `<div class="flow-done">✔ 报送成功 · 回执编号 <b>${receiptNo}</b> · CAMLMAC 确认时间 ${new Date().toLocaleTimeString("zh-CN")}${dl}（发现之日起 5 个工作日内）</div>
+    r.innerHTML = state.readOnly
+      ? `<div class="flow-done">✔ 演示送达完成 · 模拟回执编号 <b>${esc(receiptNo)}</b>${dl}（发现之日起 5 个工作日内）
+           <div style="font-weight:400;font-size:12px;color:#92400e;margin-top:6px;">
+           本次<b>未连接人行报文系统（CAMLMAC）</b>，没有真实确认时间；回执号由本地生成、未写入业务台账，不具备报送效力。
+           接入网关、机构证书签名与专线后即为正式报送。</div></div>
+         <button class="btn ghost small" style="margin-top:12px;" onclick="toast('演示模式：回执与授权影像归档包为前端模拟，未落盘')">查看回执与归档包</button>`
+      : `<div class="flow-done">✔ 报送成功 · 回执编号 <b>${receiptNo}</b> · CAMLMAC 确认时间 ${new Date().toLocaleTimeString("zh-CN")}${dl}（发现之日起 5 个工作日内）</div>
       <button class="btn ghost small" style="margin-top:12px;" onclick="toast('已打开回执与授权影像归档包（演示）')">查看回执与归档包</button>`;
     flowFinish();
   }, 1500);
@@ -231,6 +246,7 @@ function flowFinish(){
   const b = document.getElementById("flowBody");
   if(b && !document.getElementById("flowSum")){
     b.insertAdjacentHTML("beforeend",
-      `<div id="flowSum" class="flow-done" style="margin-top:12px;">✔ 全流程闭环完成：扫描 → 命中 → 研判 → STR（中/英）→ 预览签字 → 三级授权 → 报文报送 → 回执归档，全程留痕。</div>`);
+      `<div id="flowSum" class="flow-done" style="margin-top:12px;">✔ 全流程闭环完成：扫描 → 命中 → 研判 → STR（中/英）→ 预览签字 → 三级授权 → 报文报送 → 回执归档，全程留痕。
+       ${state.readOnly ? "<br><span style=\"font-weight:400;font-size:12px;color:#92400e;\">注：当前为演示环境，报送环节为「演示送达」（模拟回执、未出网、未入库），其余环节均走真实后端。</span>" : ""}</div>`);
   }
 }

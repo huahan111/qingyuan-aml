@@ -6,7 +6,7 @@ const state = {
   submitted: false, receiptNo: null, submittedAt: null,
   editLog: [], version: 1, returnLog: [],
   authChannel: "branch", authPending: null, previewMode: false, archiveMode: false,
-  correctionOf: null, submissions: [], readOnly: false,
+  correctionOf: null, submissions: [], readOnly: false, demoSubmissions: [],
   signatures: {operator:null, reviewer:null, approver:null}
 };
 const CAT_LABEL = {pass:"放行", intercept:"拦截", grey:"灰区"};
@@ -107,22 +107,42 @@ async function resetDemo(){
   }catch(e){ toast("重置失败：" + e.message); }
 }
 
+/* ============ 演示送达（只读站也能把流程走完） ============
+   只读站不接人行通道、不写业务库，但流程必须能走完，否则报送之后
+   台账、归档、规则反哺全都演示不了。所以报送走"演示送达"：
+   本地生成带 DEMO 标记的回执号，报告置为已送达，台账里显示这条记录并标明未入库，
+   同时明确告知：未出网、不具报送效力。 */
+function demoReceiptNo(){
+  const d = new Date(), p = n => String(n).padStart(2, "0");
+  const ymd = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
+  return `RX-DEMO-${ymd}-${String(state.demoSubmissions.length + 1).padStart(3, "0")}`;
+}
+
+function demoSubmitRecord(rep, sigs){
+  const brief = x => x ? `${x.name} ${x.id}` : "";
+  const rec = {
+    id: null, demo: true,
+    receipt_no: demoReceiptNo(),
+    report_no: rep.report_no, case_id: rep.case_id, case_title: rep.title,
+    customer: (rep.meta || {}).customer || "",
+    submitted_at: isoNow(), version: state.version,
+    operator: brief(sigs.operator), reviewer: brief(sigs.reviewer), approver: brief(sigs.approver),
+    status: "演示送达（未入库）", filing_deadline: rep.filing_deadline || "",
+    supersedes_receipt: ""
+  };
+  state.demoSubmissions.unshift(rec);
+  return rec;
+}
+
 /* ============ 演示边界说明 ============
    线上是只读演示站：不接人行报送通道、不写业务库。相关按钮点了不能"什么都不说"，
    否则用户会以为是坏了。统一用一张说明卡讲清楚：哪些做完了、哪些没接、怎么接。 */
 const DEMO_LIMITS = {
-  submit: {
-    title: "「报送人行」只做到这一步，不是坏了",
-    done: "本页已经真跑通：扫描 → 预警 → 规则+AI 研判 → STR 中英正文 → 62 项要素 → 要素报文草稿 → 三级授权签字 → 审计链留痕。",
-    missing: "没接的是出网这一段：向人行报送要走 CAMLMAC 报文网关、机构数字证书与签名服务、专线与前置机。这三样属于机构资质和生产环境，演示站没有，也不该有。",
-    so: "所以报告会停在「已签字待报送」，不生成正式回执——这是刻意留的边界，不是失败。报文结构已按 62 项要素排好，后续拿到机构证书与网关参数，把草稿通道换成生产通道即可接上。",
-    local: "想在本地看完整写入链路（含模拟回执）：./run.sh 启动后可写库。"
-  },
   library: {
     title: "这个操作要写库，演示站已锁",
-    done: "看案例、跑研判、出报告、查溯源这些只读功能都正常。",
-    missing: "只读模式关闭了所有写接口（防止访客之间互相污染演示数据），所以「沉淀负样本」「报送」「重置数据」这类动作不会生效。",
-    so: "它不是坏，是被锁了。",
+    done: "看案例、跑研判、出报告、查溯源、走完七步流程（含演示送达）这些功能都正常。",
+    missing: "只读模式关闭了所有写接口（防止访客之间互相污染演示数据），所以「沉淀负样本」「重置数据」这类动作不会生效。",
+    so: "它不是坏，是被锁了；报送走的是演示送达，能走完但不入库。",
     local: "本地 ./run.sh 或 Codespaces 启动后可写，能完整走一遍负样本沉淀。"
   }
 };

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
 <title>清源AML · 反洗钱智能监测平台</title>
-<link rel="stylesheet" href="/static/css/app.css?v=17">
+<link rel="stylesheet" href="/static/css/app.css?v=18">
 </head>
 <body>
 
@@ -81,10 +81,10 @@
     <!-- ============ 全流程演示 ============ -->
     <section id="page-flow" class="page">
       <div class="note-bar" style="margin-bottom:12px;">
-        <b>这一步的边界先说清：</b>前六步（扫描 → 预警 → 研判 → STR → 签署 → 三级授权）在本页真实跑通；
-        <b>第⑦步「报送人行」止于生成报文与留痕</b>——向人行报送需要 CAMLMAC 报文网关、机构数字证书与签名服务、
-        专线与前置机，属机构资质与生产环境，本演示站未接入，因此报告会停在「已签字待报送」。
-        接入上述通道后即可正式报送，报文结构已按 3 号令 62 项要素排好。
+        <b>演示环境的处理方式先说清：</b>七步全部可走完，包括第⑦步报送。区别在于——本演示站<b>未接入</b>人行报文系统
+        （CAMLMAC 网关、机构数字证书与签名、专线前置机），所以报送走的是「<b>演示送达</b>」：本地生成带
+        <code>RX-DEMO</code> 前缀的模拟回执、流程继续往下走、台账里能看到这条记录并标注未入库。
+        也就是说：<b>流程是真的走完了，回执是模拟的</b>，接入上述通道后即为正式报送。
       </div>
       <div class="card">
         <div class="flow-body">
@@ -291,8 +291,9 @@
     <footer class="footer">
       <b>免责声明</b>：本系统为个人学习与技术演示作品，所有案例数据均为脱敏合成的演示数据，不涉及任何真实客户信息，仅用于功能演示与案例展示；<br>
       研判逻辑与报告输出仅供学习交流，不构成任何实际业务的合规依据。演示数据集以独立 JSON 文件存放，不写入业务数据库。<br>
-      <b>报送边界</b>：本演示<b>未接入</b>人民银行反洗钱监测分析中心（CAMLMAC）报文通道——缺报文网关、机构数字证书与签名服务、专线与前置机，
-      因此报送环节止于生成 62 项要素与报文草稿，报告状态停留在「已签字待报送」；接入上述通道后方可正式报送。
+      <b>报送边界</b>：本演示<b>未接入</b>人民银行反洗钱监测分析中心（CAMLMAC）报文通道——缺报文网关、机构数字证书与签名服务、专线与前置机。
+      为让全流程可完整演示，报送环节采用「<b>演示送达</b>」：本地生成 <code>RX-DEMO</code> 前缀的模拟回执，报告置为已送达，
+      台账中标注"未入库"。该回执<b>不具报送效力</b>；接入上述通道后即为正式报送。
     </footer>
   </div>
 </div>
@@ -347,16 +348,16 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="/static/js/config.js?v=17"></script>
-<script src="/static/js/core.js?v=17"></script>
-<script src="/static/js/login.js?v=17"></script>
-<script src="/static/js/dashboard.js?v=17"></script>
-<script src="/static/js/submissions.js?v=17"></script>
-<script src="/static/js/cases.js?v=17"></script>
-<script src="/static/js/report.js?v=17"></script>
-<script src="/static/js/auth.js?v=17"></script>
-<script src="/static/js/flow.js?v=17"></script>
-<script src="/static/js/cdd.js?v=17"></script>
-<script src="/static/js/app.js?v=17"></script>
+<script src="/static/js/config.js?v=18"></script>
+<script src="/static/js/core.js?v=18"></script>
+<script src="/static/js/login.js?v=18"></script>
+<script src="/static/js/dashboard.js?v=18"></script>
+<script src="/static/js/submissions.js?v=18"></script>
+<script src="/static/js/cases.js?v=18"></script>
+<script src="/static/js/report.js?v=18"></script>
+<script src="/static/js/auth.js?v=18"></script>
+<script src="/static/js/flow.js?v=18"></script>
+<script src="/static/js/cdd.js?v=18"></script>
+<script src="/static/js/app.js?v=18"></script>
 </body>
 </html>

@@ -6,7 +6,8 @@ async function loadSubmissions(){
   body.innerHTML = '<div style="padding:18px;"><span class="loading"></span></div>';
   try{
     const d = await jget("/api/submissions");
-    state.submissions = d.submissions || [];
+    // 只读演示站写不了库，但流程要能走完：本次会话内的"演示送达"记录并入列表并标注
+    state.submissions = [...(state.demoSubmissions || []), ...(d.submissions || [])];
     const list = state.submissions;
     // 今日计数按 ISO 日期比较（写入侧已统一为 YYYY-MM-DD HH:MM:SS；
     // 历史上两种格式混存，字符串前缀比较会漏计）
@@ -53,20 +54,28 @@ function renderSubmissions(){
   const rows = list.map(x=>{
     const d = (x.submitted_at||"").slice(0,10).replace(/\//g,"-");
     const onTime = x.filing_deadline ? (d && d <= x.filing_deadline ? "按期" : "逾期") : "—";
-    return `<tr class="clickable" onclick="openArchivedSubmission(${x.id})">
+    const openAttr = x.demo ? "" : ` class="clickable" onclick="openArchivedSubmission(${x.id})"`;
+    const tail = x.demo
+      ? `<td style="font-size:11.5px;color:var(--muted);">演示记录<br>未入库</td>`
+      : `<td onclick="event.stopPropagation()" style="white-space:nowrap;">
+        <button class="btn ghost small" onclick="openArchivedSubmission(${x.id})">查看</button>
+        <button class="btn ghost small" onclick="correctSubmission(${x.id})">更正</button></td>`;
+    return `<tr${openAttr}>
       <td style="font-family:monospace;font-size:11.5px;">${esc(x.receipt_no)}${x.supersedes_receipt?`<br><span style="color:var(--muted);">原 ${esc(x.supersedes_receipt)}</span>`:""}</td>
       <td style="font-family:monospace;font-size:11.5px;">${esc(x.report_no)}</td>
       <td>${esc(x.case_id)}</td><td>${esc(x.customer)}</td>
       <td>${esc(x.submitted_at)}</td>
       <td>${esc(x.operator)}</td><td>${esc(x.reviewer)}</td><td>${esc(x.approver)}</td>
       <td style="text-align:center;">v${x.version}</td>
-      <td><span class="pill ${x.status==="更正报告"?"blue":x.status==="已更正"?"amber":"green"}">${esc(x.status)}</span></td>
+      <td><span class="pill ${x.demo ? "blue" : x.status==="更正报告"?"blue":x.status==="已更正"?"amber":"green"}">${esc(x.status)}</span></td>
       <td style="font-size:12px;color:${onTime==="逾期"?"var(--red)":"var(--muted)"};">${onTime}</td>
-      <td onclick="event.stopPropagation()" style="white-space:nowrap;">
-        <button class="btn ghost small" onclick="openArchivedSubmission(${x.id})">查看</button>
-        <button class="btn ghost small" onclick="correctSubmission(${x.id})">更正</button></td></tr>`;
+      ${tail}</tr>`;
   }).join("");
-  body.innerHTML = `<div style="overflow-x:auto;"><table class="grid"><thead><tr>
+  const demoBanner = (state.demoSubmissions || []).length
+    ? `<div class="note-bar warn" style="margin-bottom:10px;">只读演示环境：标注「演示送达（未入库）」的是本地模拟回执——
+       未连接人行报文系统、未写入业务台账，刷新页面即消失；接入网关与机构证书签名后为正式报送。</div>`
+    : "";
+  body.innerHTML = `${demoBanner}<div style="overflow-x:auto;"><table class="grid"><thead><tr>
     <th>回执号</th><th>报告编号</th><th>案例</th><th>客户</th><th>报送时间</th>
     <th>经办</th><th>复核</th><th>审批</th><th>版本</th><th>状态</th><th>时限</th><th></th>
     </tr></thead><tbody>${rows}</tbody></table></div>`;

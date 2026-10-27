@@ -35,9 +35,12 @@ function backToAuth(){
 
 /* 签字完成 ≠ 已提交：提交是独立动作，需二次确认 */
 function submitReport(){
-  if(state.readOnly){ toast("当前为只读演示环境，不能提交报送"); return; }
   if(!state.signed){ toast("请先完成三级签字授权"); return; }
   if(state.submitted){ toast("报告已提交，回执 " + state.receiptNo); return; }
+  const demoNote = state.readOnly
+    ? `<div class="note-bar warn" style="margin-top:10px;">当前为演示环境：本次提交<b>不出网、不写入业务台账</b>，
+       回执号由本地模拟生成（前缀 RX-DEMO），仅用于把流程走完，不具备报送效力。</div>`
+    : "";
   document.getElementById("signMeta").textContent =
     `报告编号 ${state.report.report_no} · 提交后不可撤回`;
   document.getElementById("signBody").innerHTML = `
@@ -46,6 +49,7 @@ function submitReport(){
       当前报告已完成三级授权，状态为「已签字待报送」。提交后不可撤回，5 个工作日报送时限监控开始，
       回执编号写入报告归档。
     </div>
+    ${demoNote}
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
       <button class="btn ghost" onclick="closeSign()">取消</button>
       <button class="btn" onclick="doSubmitReport()">确认提交报送</button>
@@ -53,8 +57,21 @@ function submitReport(){
   document.getElementById("signMask").classList.add("show");
 }
 async function doSubmitReport(){
-  // 只读演示：不写台账、不出网，给边界说明而不是"写入失败"
-  if(state.readOnly){ closeSign(); showDemoLimit("submit"); return; }
+  // 只读演示：走"演示送达"——本地生成回执、流程继续，但明确告知未出网未入库
+  if(state.readOnly){
+    const rec = demoSubmitRecord(state.report, state.signatures);
+    state.submitted = true;
+    state.receiptNo = rec.receipt_no;
+    state.submittedAt = rec.submitted_at;
+    renderSignBlock();
+    renderActionState();
+    closeSign();
+    toast(`演示送达完成 · 模拟回执 ${rec.receipt_no}（未连接人行报文系统，未入库）`);
+    if(state.flowStage >= 6 && document.getElementById("page-flow").classList.contains("active")){
+      flowAuth();
+    }
+    return;
+  }
   // 先写台账成功、再置「已报送」状态：写库失败时报告保持"已签字待报送"，
   // 提交按钮仍可用可重试（此前先置状态后异步写库，失败会把报告永久卡在
   // "已报送"且台账无记录，且没有任何重试入口）
